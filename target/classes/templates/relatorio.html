@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Relatório</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-4">
+    <h2>Relatório Financeiro</h2>
+
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h5>Faturamento</h5>
+                <p th:text="${faturamento}">0</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h5>Custo</h5>
+                <p th:text="${custo}">0</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">
+                <h5>Lucro</h5>
+                <p th:text="${lucro}">0</p>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <h3>Resumo Dashboard</h3>
+    <div class="row mt-2">
+        <div class="col-md-4">
+            <div class="card p-3">Clientes: <span th:text="${totalClientes}">0</span></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">Ordens: <span th:text="${totalOrdens}">0</span></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3">Vendas: <span th:text="${totalVendas}">0</span></div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

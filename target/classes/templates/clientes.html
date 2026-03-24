@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Clientes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-4">
+
+    <h2>Cadastro de Clientes</h2>
+
+    <form method="post" class="row g-2" id="formCliente">
+        <div class="col-md-4">
+            <input name="nome" id="nome" class="form-control" placeholder="Nome" required>
+        </div>
+        <div class="col-md-3">
+            <input name="cpf" id="cpf" class="form-control" placeholder="CPF" maxlength="14" required>
+        </div>
+        <div class="col-md-3">
+            <input name="whatsapp" id="whatsapp" class="form-control" placeholder="WhatsApp" maxlength="15" required>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-success w-100">Salvar</button>
+        </div>
+    </form>
+
+    <hr>
+
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>WhatsApp</th>
+            <th>Ações</th>
+        </tr>
+        </thead>
+
+        <tbody>
+        <tr th:each="c : ${clientes}">
+            <td th:text="${c.nome}"></td>
+            <td th:text="${c.cpf}"></td>
+            <td th:text="${c.whatsapp}"></td>
+            <td>
+                <form th:if="${session.usuarioLogado != null and session.usuarioLogado.role == 'admin'}"
+                      th:action="@{/admin/cliente/deletar/{id}(id=${c.id})}" method="post" style="display:inline">
+                    <button type="submit" class="btn btn-danger btn-sm"
+                            onclick="return confirm('Tem certeza que deseja deletar?')">Deletar</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+</div>
+
+<script>
+    document.getElementById("nome").addEventListener("input", function() {
+        this.value = this.value.replace(/[^a-zA-ZÀ-ú ]/g, "");
+    });
+
+    document.getElementById("cpf").addEventListener("input", function() {
+        let v = this.value.replace(/\D/g, "").slice(0,11);
+        v = v.replace(/(\d{3})(\d)/, "$1.$2");
+        v = v.replace(/(\d{3})(\d)/, "$1.$2");
+        v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        this.value = v;
+    });
+
+    document.getElementById("whatsapp").addEventListener("input", function() {
+        let v = this.value.replace(/\D/g, "").slice(0,11);
+        v = v.replace(/(\d{2})(\d)/, "$1 $2");
+        v = v.replace(/(\d{1})(\d{4})(\d{4})$/, "$1 $2-$3");
+        this.value = v;
+    });
+
+    document.getElementById("formCliente").addEventListener("submit", function() {
+        setTimeout(() => { this.reset(); }, 100);
+    });
+</script>
+
+</body>
+</html>

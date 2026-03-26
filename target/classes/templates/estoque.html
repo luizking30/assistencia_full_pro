@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+    <title>Estoque - Shark Eletrônicos</title>
+</head>
+
+<body>
+<div layout:fragment="conteudo">
+    <div class="mt-2">
+        <div class="mb-4">
+            <h2 class="fw-bold mb-0 text-white"><i class="bi bi-box-seam text-primary"></i> Controle de Estoque</h2>
+            <p class="text-white-50 small">Gerencie entrada, saída e performance financeira do seu inventário</p>
+        </div>
+
+        <div class="card bg-dark border-primary shadow-lg mb-4" style="border-radius: 15px; border-width: 2px;">
+            <div class="card-body p-4">
+                <form th:action="@{/estoque/salvar}" method="post" id="formEstoque" class="row g-3 align-items-end">
+                    <input type="hidden" id="campoId" name="id">
+
+                    <div class="col-md-3">
+                        <label class="form-label text-success small fw-bold text-uppercase">Nome do Produto</label>
+                        <input id="campoNome" name="nome" class="form-control bg-black text-white border-secondary shadow-none" placeholder="Ex: Teclado Mecânico" required>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label text-success small fw-bold text-uppercase">Preço Entrada (Und)</label>
+                        <input id="campoPrecoCusto" name="precoCusto" type="number" step="0.01" class="form-control bg-black text-white border-secondary shadow-none" placeholder="0.00" required>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label text-success small fw-bold text-uppercase">Preço Saída (Und)</label>
+                        <input id="campoPrecoVenda" name="precoVenda" type="number" step="0.01" class="form-control bg-black text-white border-secondary shadow-none" placeholder="0.00" required>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label text-success small fw-bold text-uppercase">Quantidade</label>
+                        <input id="campoQtd" name="quantidade" type="number" class="form-control bg-black text-white border-secondary shadow-none" value="1" required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="d-flex gap-2">
+                            <button type="submit" id="btnAcao" class="btn btn-primary w-100 fw-bold">
+                                <i class="bi bi-plus-circle me-2"></i>SALVAR ITEM
+                            </button>
+                            <button type="button" id="btnCancelar" class="btn btn-outline-secondary d-none" onclick="limparFormulario()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-lg border-secondary bg-dark text-white mb-4" style="border-radius: 15px; overflow: hidden;">
+            <div class="table-responsive">
+                <table class="table table-hover table-dark mb-0 align-middle">
+                    <thead class="bg-black text-muted text-uppercase small">
+                    <tr>
+                        <th class="ps-4">PRODUTO</th>
+                        <th class="text-center">QTD</th>
+                        <th>ENTRADA (UND)</th>
+                        <th>ENTRADA (TOTAL)</th>
+                        <th>SAÍDA (UND)</th>
+                        <th>SAÍDA (TOTAL)</th>
+                        <th class="text-center">STATUS</th>
+                        <th class="text-center">AÇÕES</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="p : ${produtos}">
+                        <td class="ps-4">
+                            <span class="fw-bold" th:text="${p.nome}"></span><br>
+                            <small class="text-primary" th:text="'ID: ' + ${p.id}"></small>
+                        </td>
+                        <td class="text-center fw-bold text-info" th:text="${p.quantidade}"></td>
+
+                        <td class="text-white-50" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto, 1, 'POINT', 2, 'COMMA')}"></td>
+
+                        <td class="text-danger fw-bold" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
+
+                        <td class="text-white-50" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda, 1, 'POINT', 2, 'COMMA')}"></td>
+
+                        <td class="text-success fw-bold" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
+
+                        <td class="text-center">
+                            <span th:if="${p.quantidade <= 2}" class="badge bg-danger">CRÍTICO</span>
+                            <span th:if="${p.quantidade > 2 && p.quantidade <= 5}" class="badge bg-warning text-dark">BAIXO</span>
+                            <span th:if="${p.quantidade > 5}" class="badge bg-success">OK</span>
+                        </td>
+
+                        <td class="text-center">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-info" th:onclick="'carregarParaEdicao(' + ${p.id} + ')'">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <form sec:authorize="hasRole('ADMIN')" th:action="@{/estoque/deletar/{id}(id=${p.id})}" method="post" style="display:inline"
+                                      onsubmit="return confirm('Remover item da Shark?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-1"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-5">
+            <div class="col-md-6">
+                <div class="card bg-black border-danger p-3 shadow">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-danger small fw-bold mb-0 text-uppercase">Total Investido (Custo)</p>
+                            <h3 class="fw-bold text-white mb-0"
+                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoCusto * quantidade]), 1, 'POINT', 2, 'COMMA')}">
+                            </h3>
+                        </div>
+                        <i class="bi bi-graph-down-arrow text-danger fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-black border-success p-3 shadow">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-success small fw-bold mb-0 text-uppercase">Valor Total de Saída (Venda)</p>
+                            <h3 class="fw-bold text-white mb-0"
+                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoVenda * quantidade]), 1, 'POINT', 2, 'COMMA')}">
+                            </h3>
+                        </div>
+                        <i class="bi bi-graph-up-arrow text-success fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        function carregarParaEdicao(id) {
+            fetch('/estoque/buscar/' + id)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('campoId').value = data.id;
+                    document.getElementById('campoNome').value = data.nome;
+                    document.getElementById('campoPrecoCusto').value = data.precoCusto;
+                    document.getElementById('campoPrecoVenda').value = data.precoVenda;
+                    document.getElementById('campoQtd').value = data.quantidade;
+
+                    const btnAcao = document.getElementById('btnAcao');
+                    btnAcao.innerHTML = '<i class="bi bi-check-lg me-2"></i>ATUALIZAR';
+                    btnAcao.classList.replace('btn-primary', 'btn-info');
+                    document.getElementById('btnCancelar').classList.remove('d-none');
+
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+        }
+
+        function limparFormulario() {
+            document.getElementById('campoId').value = '';
+            document.getElementById('formEstoque').reset();
+            const btnAcao = document.getElementById('btnAcao');
+            btnAcao.innerHTML = '<i class="bi bi-plus-circle me-2"></i>SALVAR ITEM';
+            btnAcao.classList.replace('btn-info', 'btn-primary');
+            document.getElementById('btnCancelar').classList.add('d-none');
+        }
+    </script>
+</th:block>
+</body>
+</html>

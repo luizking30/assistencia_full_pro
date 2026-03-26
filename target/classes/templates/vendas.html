@@ -22,7 +22,6 @@
             background-color: #0d6efd !important;
             color: white !important;
         }
-        /* Efeito de brilho no total */
         #totalVenda {
             text-shadow: 0 0 10px rgba(25, 135, 84, 0.5);
         }
@@ -146,10 +145,10 @@
                             <div class="text-primary x-small">ID #<span th:text="${v.id}"></span></div>
                         </td>
                         <td>
-                                <span class="badge bg-outline-info border border-info text-info p-2">
-                                    <i class="bi bi-person-fill me-1"></i>
-                                    <span th:text="${v.vendedor}"></span>
-                                </span>
+                            <span class="badge bg-outline-info border border-info text-info p-2">
+                                <i class="bi bi-person-fill me-1"></i>
+                                <span th:text="${v.vendedor}"></span>
+                            </span>
                         </td>
                         <td>
                             <div th:each="item : ${v.itens}">
@@ -159,7 +158,7 @@
                         <td class="text-success fw-bold" th:text="'R$ ' + ${#numbers.formatDecimal(v.valorTotal, 1, 'POINT', 2, 'COMMA')}"></td>
                         <td class="text-center">
                             <div class="btn-group">
-                                <a th:href="@{'/vendas/comprovante/' + ${v.id}}" class="btn btn-sm btn-outline-info" title="Imprimir Recibo">
+                                <a th:href="@{'/vendas/comprovante/' + ${v.id}}" target="_blank" class="btn btn-sm btn-outline-info" title="Imprimir Recibo">
                                     <i class="bi bi-printer"></i>
                                 </a>
                                 <form th:action="@{/vendas/deletar/{id}(id=${v.id})}" method="post"
@@ -189,6 +188,7 @@
         const sugestoesBox = document.getElementById('sugestoesProdutos');
         const precoInput = document.getElementById('precoBusca');
         const qtdInput = document.getElementById('qtdBusca');
+        const formVenda = document.getElementById('formVenda');
 
         function atualizarRelogio() {
             const relogio = document.getElementById('relogio');
@@ -196,6 +196,7 @@
         }
         setInterval(atualizarRelogio, 1000);
 
+        // Busca de produtos dinâmica
         campoBusca.addEventListener('input', function() {
             const termo = this.value;
             if (termo.length < 2) {
@@ -211,12 +212,14 @@
                         produtos.forEach(p => {
                             const item = document.createElement('div');
                             item.className = 'list-group-item list-group-item-action bg-dark text-white suggestion-item';
+                            const statusEstoque = p.quantidade <= 0 ? '<span class="text-danger">Esgotado</span>' : `Estoque: ${p.quantidade}`;
+
                             item.innerHTML = `
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span><strong>#${p.id}</strong> ${p.nome}</span>
                                     <span class="badge bg-success">R$ ${p.precoVenda.toFixed(2)}</span>
                                 </div>
-                                <small class="text-muted">Disponível: ${p.quantidade}</small>
+                                <small class="text-muted">${statusEstoque}</small>
                             `;
                             item.onclick = () => selecionarProduto(p);
                             sugestoesBox.appendChild(item);
@@ -244,7 +247,7 @@
             const qtd = parseInt(qtdInput.value);
 
             if (!id || isNaN(preco) || qtd < 1) {
-                alert("Por favor, selecione um produto válido!");
+                alert("Selecione um produto válido da lista!");
                 return;
             }
 
@@ -262,6 +265,7 @@
 
             itensVenda.forEach((item, index) => {
                 totalGeral += item.subtotal;
+                // Os names abaixo seguem o padrão que o Spring Boot espera: itens[index].propriedade
                 tbody.innerHTML += `
                     <tr>
                         <td class="ps-4">#${item.id}
@@ -301,11 +305,32 @@
             campoBusca.focus();
         }
 
-        // Atalho F2 para finalizar venda
+        // Bloqueio de envio sem itens
+        formVenda.onsubmit = function(e) {
+            if (itensVenda.length === 0) {
+                e.preventDefault();
+                alert("O carrinho está vazio!");
+                return false;
+            }
+        };
+
+        // Atalho F2
         document.addEventListener('keydown', function(e) {
             if (e.key === "F2") {
                 e.preventDefault();
-                document.getElementById('formVenda').submit();
+                // Força a validação antes do submit
+                if(itensVenda.length > 0) {
+                    formVenda.submit();
+                } else {
+                    alert("Adicione itens antes de finalizar!");
+                }
+            }
+        });
+
+        // Fecha sugestões ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!campoBusca.contains(e.target) && !sugestoesBox.contains(e.target)) {
+                sugestoesBox.style.display = 'none';
             }
         });
     </script>

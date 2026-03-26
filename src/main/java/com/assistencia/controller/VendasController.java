@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList; // Importado
 import java.util.List;
 
 @Controller
@@ -37,7 +38,6 @@ public class VendasController {
 
         List<Venda> vendasHoje = vendaRepo.findByDataHoraBetween(inicioDia, fimDia);
 
-        // Calcula o "Feito do Dia" para a Shark Eletrônicos
         Double totalVendasHoje = vendasHoje.stream()
                 .filter(v -> v.getValorTotal() != null)
                 .mapToDouble(Venda::getValorTotal)
@@ -46,53 +46,62 @@ public class VendasController {
         model.addAttribute("vendas", vendasHoje);
         model.addAttribute("totalVendasHoje", totalVendasHoje);
 
+        // CORREÇÃO 1: Inicializar a lista de itens para o formulário não dar Erro 500
         if (!model.containsAttribute("venda")) {
-            model.addAttribute("venda", new Venda());
+            Venda novaVenda = new Venda();
+            novaVenda.setItens(new ArrayList<>());
+            model.addAttribute("venda", novaVenda);
         }
         return "vendas";
     }
 
-    // 🔵 SALVAR NOVA VENDA COM REGISTRO DE VENDEDOR DINÂMICO
+    // 🔵 SALVAR NOVA VENDA
     @Transactional
     @PostMapping("/salvar")
-    public String salvar(@ModelAttribute Venda venda,
-                         Authentication auth, // Captura quem está logado (admin, funcionario, etc.)
+    public String salvar(@ModelAttribute("venda") Venda venda,
+                         Authentication auth,
                          RedirectAttributes redirectAttributes) {
         try {
-            List<ItemVenda> itens = venda.getItens();
-            if (itens == null || itens.isEmpty()) {
-                redirectAttributes.addFlashAttribute("erro", "Adicione pelo menos um produto!");
+            // CORREÇÃO 2: Verificar se a lista foi preenchida pelo Thymeleaf
+            if (venda.getItens() == null || venda.getItens().isEmpty()) {
+                redirectAttributes.addFlashAttribute("erro", "O carrinho está vazio!");
                 return "redirect:/vendas";
             }
 
-            // 1. REGISTRAR QUEM ESTÁ REALIZANDO A VENDA
+            // Registrar vendedor
             if (auth != null && auth.isAuthenticated()) {
-                venda.setVendedor(auth.getName()); // Pega o login atual: "admin" ou "funcionario"
+                venda.setVendedor(auth.getName());
             } else {
-                venda.setVendedor("Sistema Shark"); // Fallback de segurança
+                venda.setVendedor("Sistema Shark");
             }
 
             double valorTotalCalculado = 0.0;
 
-            for (ItemVenda item : itens) {
+            // Criamos uma lista temporária para evitar erros de concorrência durante o loop
+            List<ItemVenda> itensValidados = new ArrayList<>(venda.getItens());
+
+            for (ItemVenda item : itensValidados) {
+                if (item.getProduto() == null || item.getProduto().getId() == null) continue;
+
                 Produto produtoOriginal = produtoRepo.findById(item.getProduto().getId())
-                        .orElseThrow(() -> new RuntimeException("Produto não encontrado."));
+                        .orElseThrow(() -> new RuntimeException("Produto ID " + item.getProduto().getId() + " não encontrado."));
 
                 // Validação de Estoque
                 if (produtoOriginal.getQuantidade() < item.getQuantidade()) {
-                    redirectAttributes.addFlashAttribute("erro", "Estoque insuficiente: " + produtoOriginal.getNome());
-                    return "redirect:/vendas";
+                    throw new RuntimeException("Estoque insuficiente para: " + produtoOriginal.getNome());
                 }
 
-                // Garante o preço unitário (usa o do cadastro se não vier da tela)
+                // Garante o preço
                 if (item.getPrecoUnitario() == null || item.getPrecoUnitario() <= 0) {
                     item.setPrecoUnitario(produtoOriginal.getPrecoVenda());
                 }
 
+                // CORREÇÃO 3: Vínculo bidirecional obrigatório para o JPA
                 item.setVenda(venda);
+
                 valorTotalCalculado += item.getPrecoUnitario() * item.getQuantidade();
 
-                // Baixa automática no estoque
+                // Baixa no estoque
                 produtoOriginal.setQuantidade(produtoOriginal.getQuantidade() - item.getQuantidade());
                 produtoRepo.save(produtoOriginal);
             }
@@ -101,16 +110,16 @@ public class VendasController {
             venda.setDataHora(LocalDateTime.now());
 
             vendaRepo.save(venda);
-            redirectAttributes.addFlashAttribute("sucesso", "Venda finalizada por " + venda.getVendedor() + "!");
+            redirectAttributes.addFlashAttribute("sucesso", "Venda de R$ " + String.format("%.2f", valorTotalCalculado) + " realizada!");
 
         } catch (Exception e) {
             e.printStackTrace();
-            redirectAttributes.addFlashAttribute("erro", "Erro ao processar venda: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("erro", "Falha na venda: " + e.getMessage());
         }
         return "redirect:/vendas";
     }
 
-    // 🔴 ESTORNAR VENDA (Devolve os itens para o estoque)
+    // 🔴 ESTORNAR VENDA
     @Transactional
     @PostMapping("/deletar/{id}")
     public String deletar(@PathVariable Long id, RedirectAttributes redirectAttributes) {
@@ -118,7 +127,6 @@ public class VendasController {
             Venda venda = vendaRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("Venda não encontrada!"));
 
-            // Loop para devolver as quantidades ao estoque da Shark
             if (venda.getItens() != null) {
                 for (ItemVenda item : venda.getItens()) {
                     Produto produto = item.getProduto();
@@ -130,7 +138,7 @@ public class VendasController {
             }
 
             vendaRepo.delete(venda);
-            redirectAttributes.addFlashAttribute("sucesso", "Venda estornada com sucesso!");
+            redirectAttributes.addFlashAttribute("sucesso", "Venda estornada e estoque devolvido!");
 
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("erro", "Erro ao estornar: " + e.getMessage());

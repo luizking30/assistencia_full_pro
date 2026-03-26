@@ -1,40 +1,314 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
 <head>
-    <title>Vendas</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Nova Venda - Shark Eletrônicos</title>
+    <style>
+        #sugestoesProdutos {
+            z-index: 1050;
+            display: none;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 2px solid #0d6efd;
+            border-radius: 0 0 10px 10px;
+        }
+        .suggestion-item {
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #333;
+        }
+        .suggestion-item:hover {
+            background-color: #0d6efd !important;
+            color: white !important;
+        }
+        /* Efeito de brilho no total */
+        #totalVenda {
+            text-shadow: 0 0 10px rgba(25, 135, 84, 0.5);
+        }
+    </style>
 </head>
+<body>
+<div layout:fragment="conteudo">
+    <div class="mt-2">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold mb-0 text-white"><i class="bi bi-cart-plus text-primary"></i> PDV Shark Eletrônicos</h2>
+                <p class="text-white-50 small">Venda rápida com baixa automática de estoque</p>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-black border border-primary text-primary p-2" style="font-size: 0.9rem;">
+                    <i class="bi bi-clock me-2"></i><span id="relogio">--/--/---- --:--:--</span>
+                </span>
+            </div>
+        </div>
 
-<body class="bg-light">
+        <div th:if="${erro}" class="alert alert-danger alert-dismissible fade show bg-dark text-danger border-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> <span th:text="${erro}"></span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${sucesso}" class="alert alert-success alert-dismissible fade show bg-dark text-success border-success">
+            <i class="bi bi-check-circle-fill me-2"></i> <span th:text="${sucesso}"></span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+        </div>
 
-<div class="container mt-4">
+        <div class="card bg-dark border-primary shadow-lg mb-5" style="border-radius: 15px; border-width: 2px;">
+            <div class="card-body p-4">
+                <form th:action="@{/vendas/salvar}" th:object="${venda}" method="post" id="formVenda">
 
-    <h2>Registrar Venda</h2>
+                    <div class="row g-3 align-items-end mb-4 pb-4 border-bottom border-secondary">
+                        <div class="col-md-6 position-relative">
+                            <label class="form-label text-primary small fw-bold text-uppercase">Buscar Produto</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-black border-secondary text-primary"><i class="bi bi-search"></i></span>
+                                <input type="text" id="campoBusca" class="form-control bg-black text-white border-secondary shadow-none"
+                                       placeholder="Digite nome ou ID do produto..." autocomplete="off">
+                            </div>
+                            <div id="sugestoesProdutos" class="list-group position-absolute w-100 shadow-lg bg-dark"></div>
 
-    <form method="post" class="row g-2">
-        <input name="produto" class="form-control col" placeholder="Produto">
-        <input name="valorVenda" class="form-control col" placeholder="Valor">
-        <input name="funcionario" class="form-control col" placeholder="Funcionário">
-        <button class="btn btn-primary col">Salvar</button>
-    </form>
+                            <input type="hidden" id="produtoIdReal">
+                            <input type="hidden" id="nomeSelecionado">
+                        </div>
 
-    <hr>
+                        <div class="col-md-2">
+                            <label class="form-label text-primary small fw-bold text-uppercase">Preço (R$)</label>
+                            <input type="number" id="precoBusca" step="0.01" class="form-control bg-black text-white border-secondary shadow-none">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-primary small fw-bold text-uppercase">Qtd</label>
+                            <input type="number" id="qtdBusca" class="form-control bg-black text-white border-secondary shadow-none" value="1" min="1">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" onclick="adicionarItem()" class="btn btn-primary w-100 fw-bold py-2">
+                                <i class="bi bi-plus-circle me-2"></i>INCLUIR
+                            </button>
+                        </div>
+                    </div>
 
-    <table class="table table-hover">
-        <tr>
-            <th>Produto</th>
-            <th>Valor</th>
-            <th>Funcionário</th>
-        </tr>
+                    <div class="table-responsive mb-4" style="min-height: 150px;">
+                        <table class="table table-dark table-hover align-middle">
+                            <thead class="bg-black text-white-50 text-uppercase small">
+                            <tr>
+                                <th class="ps-4">ID</th>
+                                <th>PRODUTO</th>
+                                <th class="text-center">QTD</th>
+                                <th>PREÇO UN.</th>
+                                <th>SUBTOTAL</th>
+                                <th class="text-center">REMOVER</th>
+                            </tr>
+                            </thead>
+                            <tbody id="listaItens">
+                            </tbody>
+                        </table>
+                    </div>
 
-        <tr th:each="v : ${vendas}">
-            <td th:text="${v.produto}"></td>
-            <td th:text="${v.valorVenda}"></td>
-            <td th:text="${v.funcionario}"></td>
-        </tr>
-    </table>
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-secondary">
+                        <div>
+                            <span class="text-white-50 small text-uppercase d-block">Total do Carrinho</span>
+                            <h2 class="fw-bold text-white mb-0"><span id="totalVenda" class="text-success">R$ 0,00</span></h2>
+                            <input type="hidden" name="valorTotal" id="inputTotalVenda" value="0">
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow-lg hvr-grow">
+                            <i class="bi bi-cash-stack me-2"></i>FINALIZAR (F2)
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <h4 class="fw-bold text-white mb-0">
+                <i class="bi bi-lightning-charge-fill text-warning"></i> Feito de Hoje
+            </h4>
+            <div class="text-end">
+                <span class="h4 fw-bold text-success ms-2"
+                      th:text="'R$ ' + ${#numbers.formatDecimal(totalVendasHoje, 1, 'POINT', 2, 'COMMA')}">
+                </span>
+            </div>
+        </div>
+
+        <div class="card shadow-lg border-secondary bg-dark text-white" style="border-radius: 15px; overflow: hidden;">
+            <div class="table-responsive">
+                <table class="table table-hover table-dark mb-0 align-middle">
+                    <thead class="bg-black text-white-50 text-uppercase small">
+                    <tr>
+                        <th class="ps-4">HORÁRIO</th>
+                        <th>VENDEDOR</th>
+                        <th>RESUMO</th>
+                        <th>TOTAL</th>
+                        <th class="text-center">AÇÕES</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="v : ${vendas}">
+                        <td class="ps-4">
+                            <span class="text-white" th:text="${#temporals.format(v.dataHora, 'HH:mm')}"></span>
+                            <div class="text-primary x-small">ID #<span th:text="${v.id}"></span></div>
+                        </td>
+                        <td>
+                                <span class="badge bg-outline-info border border-info text-info p-2">
+                                    <i class="bi bi-person-fill me-1"></i>
+                                    <span th:text="${v.vendedor}"></span>
+                                </span>
+                        </td>
+                        <td>
+                            <div th:each="item : ${v.itens}">
+                                <small class="text-white-50" th:text="${item.quantidade + 'x ' + item.produto.nome}"></small>
+                            </div>
+                        </td>
+                        <td class="text-success fw-bold" th:text="'R$ ' + ${#numbers.formatDecimal(v.valorTotal, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td class="text-center">
+                            <div class="btn-group">
+                                <a th:href="@{'/vendas/comprovante/' + ${v.id}}" class="btn btn-sm btn-outline-info" title="Imprimir Recibo">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                                <form th:action="@{/vendas/deletar/{id}(id=${v.id})}" method="post"
+                                      onsubmit="return confirm('ATENÇÃO: Estornar esta venda devolverá os itens ao estoque. Confirmar?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-1">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(vendas)}">
+                        <td colspan="5" class="text-center py-4 text-muted">Nenhuma venda registrada na Shark hoje.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
+<th:block layout:fragment="scripts">
+    <script th:inline="javascript">
+        let itensVenda = [];
+
+        const campoBusca = document.getElementById('campoBusca');
+        const sugestoesBox = document.getElementById('sugestoesProdutos');
+        const precoInput = document.getElementById('precoBusca');
+        const qtdInput = document.getElementById('qtdBusca');
+
+        function atualizarRelogio() {
+            const relogio = document.getElementById('relogio');
+            if(relogio) relogio.innerText = new Date().toLocaleString('pt-BR');
+        }
+        setInterval(atualizarRelogio, 1000);
+
+        campoBusca.addEventListener('input', function() {
+            const termo = this.value;
+            if (termo.length < 2) {
+                sugestoesBox.style.display = 'none';
+                return;
+            }
+
+            fetch('/estoque/sugestoes?termo=' + encodeURIComponent(termo))
+                .then(res => res.json())
+                .then(produtos => {
+                    sugestoesBox.innerHTML = '';
+                    if (produtos.length > 0) {
+                        produtos.forEach(p => {
+                            const item = document.createElement('div');
+                            item.className = 'list-group-item list-group-item-action bg-dark text-white suggestion-item';
+                            item.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span><strong>#${p.id}</strong> ${p.nome}</span>
+                                    <span class="badge bg-success">R$ ${p.precoVenda.toFixed(2)}</span>
+                                </div>
+                                <small class="text-muted">Disponível: ${p.quantidade}</small>
+                            `;
+                            item.onclick = () => selecionarProduto(p);
+                            sugestoesBox.appendChild(item);
+                        });
+                        sugestoesBox.style.display = 'block';
+                    } else {
+                        sugestoesBox.style.display = 'none';
+                    }
+                });
+        });
+
+        function selecionarProduto(p) {
+            document.getElementById('produtoIdReal').value = p.id;
+            document.getElementById('nomeSelecionado').value = p.nome;
+            campoBusca.value = p.nome;
+            precoInput.value = p.precoVenda;
+            sugestoesBox.style.display = 'none';
+            qtdInput.focus();
+        }
+
+        function adicionarItem() {
+            const id = document.getElementById('produtoIdReal').value;
+            const nome = document.getElementById('nomeSelecionado').value;
+            const preco = parseFloat(precoInput.value);
+            const qtd = parseInt(qtdInput.value);
+
+            if (!id || isNaN(preco) || qtd < 1) {
+                alert("Por favor, selecione um produto válido!");
+                return;
+            }
+
+            const subtotal = preco * qtd;
+            itensVenda.push({ id, nome, preco, qtd, subtotal });
+
+            atualizarTabela();
+            limparCamposBusca();
+        }
+
+        function atualizarTabela() {
+            const tbody = document.getElementById('listaItens');
+            tbody.innerHTML = '';
+            let totalGeral = 0;
+
+            itensVenda.forEach((item, index) => {
+                totalGeral += item.subtotal;
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="ps-4">#${item.id}
+                            <input type="hidden" name="itens[${index}].produto.id" value="${item.id}">
+                        </td>
+                        <td>${item.nome}</td>
+                        <td class="text-center">${item.qtd}
+                            <input type="hidden" name="itens[${index}].quantidade" value="${item.qtd}">
+                        </td>
+                        <td>R$ ${item.preco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                            <input type="hidden" name="itens[${index}].precoUnitario" value="${item.preco}">
+                        </td>
+                        <td class="text-success fw-bold">R$ ${item.subtotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                        <td class="text-center">
+                            <button type="button" onclick="removerItem(${index})" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+
+            document.getElementById('totalVenda').innerText = `R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('inputTotalVenda').value = totalGeral.toFixed(2);
+        }
+
+        function removerItem(i) {
+            itensVenda.splice(i, 1);
+            atualizarTabela();
+        }
+
+        function limparCamposBusca() {
+            campoBusca.value = '';
+            document.getElementById('produtoIdReal').value = '';
+            document.getElementById('nomeSelecionado').value = '';
+            precoInput.value = '';
+            qtdInput.value = '1';
+            campoBusca.focus();
+        }
+
+        // Atalho F2 para finalizar venda
+        document.addEventListener('keydown', function(e) {
+            if (e.key === "F2") {
+                e.preventDefault();
+                document.getElementById('formVenda').submit();
+            }
+        });
+    </script>
+</th:block>
 </body>
 </html>

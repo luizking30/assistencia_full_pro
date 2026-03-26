@@ -1,9 +1,10 @@
-package com.assistencia.model;
+package com.assistencia.model; // Verifique se esta linha é a primeira do arquivo
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "ordem_servico")
 public class OrdemServico {
 
     @Id
@@ -15,13 +16,27 @@ public class OrdemServico {
     private String clienteWhatsapp;
 
     private String produto;
+
+    @Column(columnDefinition = "TEXT")
     private String defeito;
 
+    @Column(length = 50)
     private String status;
 
-    private LocalDate data;
+    private LocalDateTime data; // Data de abertura
 
-    // getters e setters
+    private LocalDateTime dataEntrega; // Para o relatório de serviços entregues
+
+    private Double valorTotal; // Alinhado com o seu Controller e Relatório
+
+    // Construtor Padrão (Obrigatório para o JPA/Hibernate)
+    public OrdemServico() {
+        this.data = LocalDateTime.now();
+        this.status = "ABERTA";
+    }
+
+    // --- Getters e Setters ---
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -43,6 +58,16 @@ public class OrdemServico {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public LocalDate getData() { return data; }
-    public void setData(LocalDate data) { this.data = data; }
+    public LocalDateTime getData() { return data; }
+    public void setData(LocalDateTime data) { this.data = data; }
+
+    public LocalDateTime getDataEntrega() { return dataEntrega; }
+    public void setDataEntrega(LocalDateTime dataEntrega) { this.dataEntrega = dataEntrega; }
+
+    public Double getValorTotal() { return valorTotal; }
+    public void setValorTotal(Double valorTotal) { this.valorTotal = valorTotal; }
+
+    // Método de compatibilidade (Alias) para evitar erros se houver chamadas para 'getValor'
+    public Double getValor() { return valorTotal; }
+    public void setValor(Double valor) { this.valorTotal = valor; }
 }

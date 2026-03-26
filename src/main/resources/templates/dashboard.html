@@ -1,131 +1,159 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+
 <head>
-    <title>Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 220px;
-            background: #1e1e2f;
-            height: 100vh;
-            color: #fff;
-            padding: 20px;
-        }
-
-        .sidebar a {
-            display: block;
-            color: #ccc;
-            padding: 10px;
-            text-decoration: none;
-            margin-bottom: 5px;
-        }
-
-        .sidebar a:hover {
-            background: #333;
-            color: #fff;
-        }
-
-        /* Conteúdo */
-        .content {
-            flex: 1;
-            padding: 30px;
-            background: #f4f6f9;
-        }
-
-        .card {
-            display: inline-block;
-            background: #fff;
-            padding: 20px;
-            margin: 10px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-    </style>
+    <title>Movimento - Shark Eletrônicos</title>
 </head>
+
 <body>
+<div layout:fragment="conteudo">
 
-<div class="sidebar">
-    <h2>Sistema</h2>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/clientes">Clientes</a>
-    <a href="/produtos">Produtos</a>
-    <a href="/ordens">Ordens</a>
-    <a href="/vendas">Vendas</a>
-    <a href="/relatorio">Relatório</a>
-</div>
+    <div class="mt-2 text-white">
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 text-white fw-bold"><i class="bi bi-graph-up-arrow text-success"></i> MOVIMENTO DO DIA</h2>
+            <span class="ms-3 badge bg-dark text-info border border-info px-3 py-2"
+                  th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}">Data Atual</span>
+        </div>
 
-<div class="content">
-    <h1>Dashboard</h1>
-
-    <!-- Cards de resumo -->
-    <div class="card">Clientes: <span th:text="${totalClientes}">0</span></div>
-    <div class="card">Ordens: <span th:text="${totalOrdens}">0</span></div>
-    <div class="card">Vendas: <span th:text="${totalVendas}">0</span></div>
-
-    <hr>
-
-    <!-- Botão para abrir modal de cadastro de produtos -->
-    <button type="button" class="btn btn-success mt-3" data-bs-toggle="modal" data-bs-target="#modalProduto">
-        Cadastrar Produto
-    </button>
-
-    <!-- Modal de cadastro de produtos -->
-    <div class="modal fade" id="modalProduto" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="formProdutoDashboard">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Cadastrar Produto</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input name="nome" class="form-control mb-2" placeholder="Nome do Produto" required>
-                        <input name="preco" type="number" step="0.01" class="form-control mb-2" placeholder="Preço" required>
-                        <input name="quantidade" type="number" class="form-control mb-2" placeholder="Quantidade" required>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-success">Salvar Produto</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    </div>
-                </form>
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">Clientes Novos</h6>
+                    <h2 class="text-primary mb-0 fw-bold" th:text="${clientesHoje}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">OS Criadas</h6>
+                    <h2 class="text-info mb-0 fw-bold" th:text="${osCriadasHoje}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">Vendas Feitas</h6>
+                    <h2 class="text-success mb-0 fw-bold" th:text="${vendasHoje}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px; border-left: 5px solid #ffc107 !important;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">OS Entregues</h6>
+                    <h2 class="text-warning mb-0 fw-bold" th:text="${osEntreguesHoje}">0</h2>
+                </div>
             </div>
         </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="card p-4 shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-white-50 small fw-bold text-uppercase">Total em Serviços (OS)</h6>
+                            <h3 class="text-info mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalServicosHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
+                        </div>
+                        <i class="bi bi-tools text-info opacity-50 fs-2"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4 shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-white-50 small fw-bold text-uppercase">Total em Vendas</h6>
+                            <h3 class="text-success mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalVendasValorHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
+                        </div>
+                        <i class="bi bi-cart-check text-success opacity-50 fs-2"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4 shadow-sm border-0 h-100" style="background: linear-gradient(45deg, #1a1a1a, #0d1b12); border-radius: 15px; border: 1px solid #06f906 !important;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-success small fw-bold text-uppercase">FATURAMENTO TOTAL</h6>
+                            <h2 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalFaturadoHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h2>
+                        </div>
+                        <i class="bi bi-cash-coin text-success fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="border-0 bg-secondary mb-5" style="height: 1px; opacity: 0.2;">
+
+        <div class="d-flex align-items-center mb-4">
+            <h2 class="mb-0 text-white fw-bold"><i class="bi bi-calendar3 text-info"></i> PERFORMANCE 30 DIAS</h2>
+            <span class="ms-3 badge bg-black border border-secondary text-white-50 px-3 py-2">Visão Mensal Shark</span>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #0d6efd !important;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">Novos Clientes (Mês)</h6>
+                    <h2 class="text-primary mb-0 fw-bold" th:text="${clientes30Dias}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #0dcaf0 !important;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">OS Geradas (Mês)</h6>
+                    <h2 class="text-info mb-0 fw-bold" th:text="${osCriadas30Dias}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #198754 !important;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">Vendas Totais (Mês)</h6>
+                    <h2 class="text-success mb-0 fw-bold" th:text="${vendas30Dias}">0</h2>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #ffc107 !important;">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">OS Finalizadas (Mês)</h6>
+                    <h2 class="text-warning mb-0 fw-bold" th:text="${osEntregues30Dias}">0</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="card p-4 shadow border-0 h-100" style="background: #1a1a1a; border-radius: 15px; border: 1px solid #333;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-white-50 small fw-bold text-uppercase">Serviços Acumulados</h6>
+                            <h3 class="text-info mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalServicos30Dias, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
+                            <small class="text-muted small">Últimos 30 dias</small>
+                        </div>
+                        <i class="bi bi-tools text-info opacity-25 fs-1"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4 shadow border-0 h-100" style="background: #1a1a1a; border-radius: 15px; border: 1px solid #333;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-white-50 small fw-bold text-uppercase">Vendas Acumuladas</h6>
+                            <h3 class="text-success mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalVendasValor30Dias, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
+                            <small class="text-muted small">Últimos 30 dias</small>
+                        </div>
+                        <i class="bi bi-cart-check text-success opacity-25 fs-1"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4 shadow border-0 h-100" style="background: linear-gradient(135deg, #000000, #111111); border-radius: 15px; border: 2px solid #00d4ff !important;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-info small fw-bold text-uppercase">FATURAMENTO MENSAL</h6>
+                            <h2 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalFaturado30Dias, 1, 'POINT', 2, 'COMMA')}">0,00</span></h2>
+                            <small class="text-white-50">Soma total do período</small>
+                        </div>
+                        <i class="bi bi-trophy text-warning fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
-
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- AJAX para cadastro de produto -->
-<script>
-    document.querySelector('#formProdutoDashboard').addEventListener('submit', function(e) {
-        e.preventDefault();
-        let form = e.target;
-        let data = new FormData(form);
-
-        fetch('/produtos/dashboard', {
-            method: 'POST',
-            body: data
-        }).then(res => res.text()).then(res => {
-            if(res === "ok"){
-                alert('Produto cadastrado com sucesso!');
-                form.reset();
-                let modalEl = document.getElementById('modalProduto');
-                let modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
-            } else {
-                alert('Erro ao cadastrar produto.');
-            }
-        });
-    });
-</script>
-
 </body>
 </html>

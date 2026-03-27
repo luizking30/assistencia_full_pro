@@ -2,120 +2,125 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{layout}"> <head>
+      layout:decorate="~{layout}">
+<head>
     <title>Gestão de Clientes - Shark Eletrônicos</title>
 </head>
 
 <body>
-<div layout:fragment="conteudo"> <div class="mt-2">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold mb-0"><i class="bi bi-people-fill text-primary"></i> Gestão de Clientes</h2>
-            <p class="text-muted small">Administração de cadastros da Shark Eletrônicos</p>
+<div layout:fragment="conteudo">
+    <div class="mt-2">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold mb-0 text-white">
+                    <i class="bi bi-people-fill" style="color: var(--shark-light-blue)"></i> Gestão de Clientes
+                </h2>
+                <p class="text-muted small">Administração de cadastros da Shark Eletrônicos | Brasília-DF</p>
+            </div>
         </div>
-    </div>
 
-    <div th:if="${mensagemErro}" class="alert alert-warning alert-dismissible fade show bg-dark text-warning border-warning shadow-lg" role="alert">
-        <i class="bi bi-exclamation-octagon-fill me-2"></i>
-        <span th:text="${mensagemErro}"></span>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
-    </div>
-
-    <div class="card bg-dark border-secondary shadow-lg mb-4" style="border-radius: 15px;">
-        <div class="card-header border-secondary bg-transparent py-3">
-            <h5 class="card-title mb-0 text-white">
-                <i class="bi bi-person-plus me-2"></i>Dados do Cliente
-            </h5>
+        <div th:if="${mensagemErro}" class="alert alert-warning alert-dismissible fade show bg-dark text-warning border-warning shadow-lg" role="alert">
+            <i class="bi bi-exclamation-octagon-fill me-2"></i>
+            <span th:text="${mensagemErro}"></span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
         </div>
-        <div class="card-body">
-            <form method="post" th:action="@{/clientes/salvar}" class="row g-3" id="formCliente">
-                <input type="hidden" name="id" id="clienteId">
 
-                <div class="col-md-5">
-                    <label class="form-label text-success small fw-bold">NOME COMPLETO</label>
-                    <input name="nome" id="nome" class="form-control bg-black text-white border-secondary shadow-none"
-                           placeholder="Ex: João da Silva" required minlength="5"
-                           pattern="^[A-Za-zÀ-ÿ\s]+$" title="O nome deve conter apenas letras.">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label text-success small fw-bold">CPF</label>
-                    <input name="cpf" id="cpf" class="form-control bg-black text-white border-secondary shadow-none"
-                           placeholder="000.000.000-00" maxlength="14" minlength="14" required
-                           pattern="\d{3}\.\d{3}\.\d{3}-\d{2}" title="Preencha o CPF completo (11 dígitos).">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label text-success small fw-bold">WHATSAPP</label>
-                    <input name="whatsapp" id="whatsapp" class="form-control bg-black text-white border-secondary shadow-none"
-                           placeholder="(61) 99999-9999" maxlength="15" minlength="15" required
-                           pattern="\(\d{2}\)\s\d{5}-\d{4}" title="Preencha o WhatsApp completo com DDD (11 dígitos).">
-                </div>
-                <div class="col-md-2 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary w-100 fw-bold">
-                        <i class="bi bi-save"></i> Salvar
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="limparFormulario()" title="Limpar Campos">
-                        <i class="bi bi-eraser"></i>
-                    </button>
-                </div>
-            </form>
+        <div class="card bg-dark border-secondary shadow-lg mb-5" style="border-radius: 15px; background: rgba(15, 23, 42, 0.6) !important;">
+            <div class="card-header border-secondary bg-transparent py-3">
+                <h5 class="card-title mb-0 text-white">
+                    <i class="bi bi-person-plus me-2" style="color: var(--shark-light-blue)"></i>Dados do Cliente
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" th:action="@{/clientes/salvar}" class="row g-4" id="formCliente">
+                    <input type="hidden" name="id" id="clienteId">
+
+                    <div class="col-md-5">
+                        <label class="form-label text-info small fw-bold">NOME COMPLETO</label>
+                        <input name="nome" id="nome" class="form-control bg-black text-white border-secondary shadow-none p-3"
+                               placeholder="Ex: João da Silva" required minlength="5">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-info small fw-bold">CPF</label>
+                        <input name="cpf" id="cpf" class="form-control bg-black text-white border-secondary shadow-none p-3"
+                               placeholder="000.000.000-00" maxlength="14" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-info small fw-bold">WHATSAPP</label>
+                        <input name="whatsapp" id="whatsapp" class="form-control bg-black text-white border-secondary shadow-none p-3"
+                               placeholder="(61) 99999-9999" maxlength="15" required>
+                    </div>
+
+                    <div class="col-12 shark-actions mt-4">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save me-2"></i> Salvar Cliente
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="limparFormulario()">
+                            <i class="bi bi-eraser me-2"></i> Limpar Campos
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
 
-    <div class="card bg-dark border-secondary shadow-sm overflow-hidden" style="border-radius: 15px;">
-        <div class="table-responsive">
-            <table class="table table-hover table-dark mb-0">
-                <thead class="bg-black text-muted">
-                <tr>
-                    <th style="width: 80px;" class="ps-4">ID</th>
-                    <th>NOME</th>
-                    <th>CPF</th>
-                    <th>CONTATO</th>
-                    <th class="text-center" style="width: 150px;">AÇÕES</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="c : ${clientes}" class="align-middle">
-                    <td class="ps-4 fw-bold text-primary" th:text="${c.id}"></td>
-                    <td class="fw-bold" th:text="${c.nome}"></td>
-                    <td th:text="${c.cpf}"></td>
-                    <td>
-                        <a th:href="'https://wa.me/55' + ${#strings.replace(#strings.replace(#strings.replace(#strings.replace(c.whatsapp, '(', ''), ') ', ''), '-', ''), ' ', '')}"
-                           target="_blank" class="text-success text-decoration-none fw-bold">
-                            <i class="bi bi-whatsapp"></i> <span th:text="${c.whatsapp}"></span>
-                        </a>
-                    </td>
-                    <td class="text-center">
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-sm btn-outline-info"
-                                    th:onclick="editarCliente([[${c.id}]], [[${c.nome}]], [[${c.cpf}]], [[${c.whatsapp}]])">
-                                <i class="bi bi-pencil-square"></i>
-                            </button>
-                            <div sec:authorize="hasRole('ADMIN')" style="display:inline">
-                                <form th:action="@{/clientes/deletar/{id}(id=${c.id})}" method="post" style="display:inline">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-1"
+        <div class="card bg-dark border-secondary shadow-sm overflow-hidden" style="border-radius: 15px;">
+            <div class="table-responsive">
+                <table class="table table-hover table-dark mb-0">
+                    <thead class="bg-black text-muted">
+                    <tr>
+                        <th class="ps-4">ID</th>
+                        <th>NOME</th>
+                        <th>CPF</th>
+                        <th>CONTATO</th>
+                        <th class="text-center">AÇÕES</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="c : ${clientes}" class="align-middle">
+                        <td class="ps-4 fw-bold text-info" th:text="${c.id}"></td>
+                        <td class="fw-bold text-white" th:text="${c.nome}"></td>
+                        <td th:text="${c.cpf}"></td>
+                        <td>
+                            <a th:href="'https://wa.me/55' + ${#strings.replace(#strings.replace(#strings.replace(#strings.replace(c.whatsapp, '(', ''), ') ', ''), '-', ''), ' ', '')}"
+                               target="_blank" class="text-success text-decoration-none fw-bold btn-link-shark">
+                                <i class="bi bi-whatsapp"></i> <span th:text="${c.whatsapp}"></span>
+                            </a>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-info p-2"
+                                        th:onclick="|editarCliente('${c.id}', '${c.nome}', '${c.cpf}', '${c.whatsapp}')|">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+
+                                <form th:action="@{/clientes/deletar/{id}(id=${c.id})}" method="post"
+                                      sec:authorize="hasRole('ADMIN')" class="m-0">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger p-2"
                                             onclick="return confirm('Deseja remover este cliente permanentemente?')">
                                         <i class="bi bi-trash3"></i>
                                     </button>
                                 </form>
                             </div>
-                        </div>
-                    </td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(clientes)}">
-                    <td colspan="5" class="text-center py-5 text-muted">Nenhum registro encontrado.</td>
-                </tr>
-                </tbody>
-            </table>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(clientes)}">
+                        <td colspan="5" class="text-center py-5 text-muted">Nenhum cliente cadastrado.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 
     <script th:inline="javascript">
+        // Função para carregar dados no formulário (agora com strings tratadas)
         function editarCliente(id, nome, cpf, whatsapp) {
             document.getElementById("clienteId").value = id;
             document.getElementById("nome").value = nome;
             document.getElementById("cpf").value = cpf;
             document.getElementById("whatsapp").value = whatsapp;
+
+            // Scroll suave para o topo para facilitar a edição
             window.scrollTo({ top: 0, behavior: 'smooth' });
             document.getElementById("nome").focus();
         }
@@ -125,31 +130,35 @@
             document.getElementById("clienteId").value = "";
         }
 
-        // Bloqueia números no campo Nome enquanto o usuário digita
-        document.getElementById("nome").addEventListener("input", function(e) {
-            this.value = this.value.replace(/[0-9]/g, "");
-        });
-
-        // Máscara de CPF: 000.000.000-00
+        // --- MÁSCARAS AUTOMÁTICAS ---
         document.getElementById("cpf").addEventListener("input", function(e) {
             let v = e.target.value.replace(/\D/g, "");
-            if (v.length > 11) v = v.substring(0, 11);
             v = v.replace(/(\d{3})(\d)/, "$1.$2");
             v = v.replace(/(\d{3})(\d)/, "$1.$2");
             v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
             e.target.value = v;
         });
 
-        // Máscara de WhatsApp: (00) 00000-0000
         document.getElementById("whatsapp").addEventListener("input", function(e) {
             let v = e.target.value.replace(/\D/g, "");
-            if (v.length > 11) v = v.substring(0, 11);
             if (v.length > 0) v = "(" + v;
             if (v.length > 3) v = v.substring(0, 3) + ") " + v.substring(3);
             if (v.length > 9) v = v.substring(0, 10) + "-" + v.substring(10);
             e.target.value = v;
         });
     </script>
+
+    <style>
+        .btn-link-shark:hover {
+            color: var(--shark-light-blue) !important;
+            transform: scale(1.05);
+            display: inline-block;
+        }
+        /* Deixa os campos de input mais altos e modernos */
+        .form-control {
+            border-radius: 10px !important;
+        }
+    </style>
 </div>
 </body>
 </html>

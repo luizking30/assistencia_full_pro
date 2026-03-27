@@ -9,15 +9,14 @@
 
     <style>
         :root {
-            --shark-blue: #0047ab; /* Azul Royal Profundo */
-            --shark-light-blue: #3b82f6;
-            --shark-black: #020617; /* Preto quase puro */
+            --shark-blue: #0047ab;
+            --shark-light-blue: #00d4ff; /* Azul mais neon */
+            --shark-black: #020617;
             --shark-white: #f8fafc;
             --text-muted: #94a3b8;
         }
 
         body {
-            /* Fundo Preto com gradiente azul */
             background: radial-gradient(circle at center, #001e4d 0%, var(--shark-black) 100%);
             font-family: 'Segoe UI', Roboto, sans-serif;
             display: flex;
@@ -28,37 +27,48 @@
         }
 
         .login-card {
-            background: rgba(15, 23, 42, 0.8); /* Fundo escuro semi-transparente */
-            backdrop-filter: blur(10px); /* Efeito de vidro */
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
             padding: 40px;
             border-radius: 24px;
             color: var(--shark-white);
             width: 100%;
-            max-width: 400px;
-            box-shadow: 0 0 40px rgba(0, 71, 171, 0.3); /* Brilho azul externo */
-            border: 1px solid rgba(0, 71, 171, 0.5); /* Borda azul sutil */
+            max-width: 420px;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            text-align: center;
         }
 
         .login-header {
-            text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
+        }
+
+        /* Estilização da Logo */
+        .brand-logo {
+            width: 180px; /* Tamanho ajustado */
+            height: auto;
+            margin-bottom: 10px;
+            /* Filtro para dar um leve brilho neon azul na logo */
+            filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.6));
         }
 
         .login-header h2 {
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 15px;
+            letter-spacing: 3px;
+            margin: 0;
             color: var(--shark-white);
+            font-size: 1.8rem;
         }
 
         .login-header p {
             color: var(--shark-light-blue);
-            font-size: 0.85rem;
-            font-weight: 600;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin: 0;
         }
 
-        /* Estilização dos Inputs */
         .form-floating > .form-control {
             background-color: rgba(2, 6, 23, 0.8);
             border: 1px solid #1e293b;
@@ -68,7 +78,7 @@
 
         .form-floating > .form-control:focus {
             border-color: var(--shark-light-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
             background-color: var(--shark-black);
         }
 
@@ -76,7 +86,6 @@
             color: var(--text-muted);
         }
 
-        /* Botão Azul e Branco */
         .btn-login {
             width: 100%;
             padding: 14px;
@@ -95,10 +104,9 @@
             background: var(--shark-white);
             color: var(--shark-blue);
             transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 10px 20px rgba(0, 212, 255, 0.3);
         }
 
-        /* Alertas */
         .alert-custom {
             padding: 12px;
             border-radius: 10px;
@@ -106,6 +114,7 @@
             margin-bottom: 20px;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
             background: rgba(0, 71, 171, 0.1);
             border: 1px solid var(--shark-blue);
@@ -113,7 +122,6 @@
         }
 
         .footer-text {
-            text-align: center;
             margin-top: 30px;
             font-size: 0.75rem;
             color: var(--text-muted);
@@ -126,24 +134,24 @@
 
 <div class="login-card">
     <div class="login-header">
-        <i class="bi bi-hurricane" style="font-size: 3.5rem; color: var(--shark-light-blue); display: block;"></i>
-        <h2 class="m-0">SHARK</h2>
-        <p class="m-0">ELETRÔNICOS</p>
+        <img th:src="@{/images/logo.png}" alt="Shark Eletrônicos" class="brand-logo">
+        <h2>SHARK</h2>
+        <p>GESTÃO DE ASSISTÊNCIA</p>
     </div>
 
     <div th:if="${param.error}" class="alert-custom" style="color: #ff4d4d; border-color: #ff4d4d;">
         <i class="bi bi-exclamation-triangle-fill"></i>
-        <span>Dados de acesso inválidos.</span>
+        <span>Usuário ou senha incorretos.</span>
     </div>
 
     <div th:if="${param.logout}" class="alert-custom">
         <i class="bi bi-info-circle-fill"></i>
-        <span>Até logo! Sessão finalizada.</span>
+        <span>Sessão encerrada com sucesso.</span>
     </div>
 
     <form th:action="@{/login}" method="post">
         <div class="form-floating mb-3">
-            <input type="text" name="username" class="form-control" id="userInput" placeholder="Usuário" required>
+            <input type="text" name="username" class="form-control" id="userInput" placeholder="Usuário" required autofocus>
             <label for="userInput"><i class="bi bi-person me-2"></i>Usuário</label>
         </div>
 
@@ -153,7 +161,7 @@
         </div>
 
         <button type="submit" class="btn-login">
-            Entrar no Sistema
+            Acessar Painel
         </button>
     </form>
 

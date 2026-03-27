@@ -16,26 +16,18 @@ import org.springframework.security.core.userdetails.UserDetails;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filter(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login", "/css/**", "/js/**").permitAll()
-                        .anyRequest().authenticated() // 🔥 TODOS LOGADOS PODEM ACESSAR
+                        // 1. AQUI ESTÁ A CHAVE: Liberando a pasta de imagens para o login
+                        .requestMatchers("/login", "/css/**", "/js/**", "/images/**").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
                         .successHandler((request, response, authentication) -> {
-
-                            var roles = authentication.getAuthorities();
-
-                            boolean isAdmin = roles.stream()
-                                    .anyMatch(r -> r.getAuthority().equals("ROLE_ADMIN"));
-
-                            if (isAdmin) {
-                                response.sendRedirect("/dashboard");
-                            } else {
-                                response.sendRedirect("/dashboard");
-                            }
+                            // Sua lógica de redirecionamento para o dashboard
+                            response.sendRedirect("/dashboard");
                         })
                         .permitAll()
                 )
@@ -47,6 +39,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
     @Bean
     public InMemoryUserDetailsManager userDetailsService() {

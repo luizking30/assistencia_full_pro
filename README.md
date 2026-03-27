@@ -1,76 +1,51 @@
-# 🛠️ Sistema de Gestão de Assistência Técnica (Full-Stack)
+# 🛠️ Sistema de Gestão de Assistência Técnica & Vendas (Full-Stack)
 
 [![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=java&logoColor=white)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Spring Security](https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=spring-security&logoColor=white)](https://spring.io/projects/spring-security)
 [![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
-[![Thymeleaf](https://img.shields.io/badge/Thymeleaf-005F0F?style=for-the-badge&logo=thymeleaf&logoColor=white)](https://www.thymeleaf.org/)
 
 ## 📖 Sobre o Projeto
-Este sistema foi desenvolvido para profissionalizar e automatizar a gestão de uma assistência técnica de eletrônicos (**Shark Eletrônicos**). Ele nasceu da necessidade real de controlar o fluxo de entrada e saída de aparelhos, garantindo que o histórico de cada cliente e o estoque de peças estivessem sempre organizados.
+Este é um ecossistema completo para gestão empresarial, desenvolvido originalmente para a **Shark Eletrônicos**. O sistema resolve problemas reais de faturamento, controle de estoque e fluxo de ordens de serviço, unindo a robustez do ecossistema Java com uma interface responsiva.
 
-O projeto utiliza a arquitetura **MVC (Model-View-Controller)**, garantindo uma separação clara entre a lógica de negócio, a persistência de dados e a interface do usuário.
+## 🏗️ Arquitetura do Sistema (Backend)
 
-## 🚀 Funcionalidades Principais
+O projeto segue os padrões da arquitetura **MVC** e **Clean Code**, organizado nos seguintes pacotes:
 
-* **Gestão de Clientes:** Cadastro completo com histórico de serviços realizados.
-* **Ordens de Serviço (OS):** Emissão de OS com descrição de defeitos, laudo técnico, status (Em Orçamento, Aprovado, Concluído) e valores.
-* **Controle de Estoque:** Cadastro de peças e produtos com atualização em tempo real.
-* **Dashboard Administrativo:** Painel visual com métricas de faturamento e serviços pendentes.
-* **Segurança:** Implementação de regras de negócio para integridade dos dados.
+* **`model`**: Entidades JPA que representam o negócio (Clientes, Vendas, OS, Estoque).
+* **`repository`**: Interfaces que utilizam **Spring Data JPA** para persistência e consultas ao MySQL.
+* **`controller`**: Camada que gerencia as requisições HTTP e a lógica de navegação.
+* **`service`**: Camada de regras de negócio, garantindo a separação de responsabilidades.
+* **`security`**: Implementação de autenticação e autorização (Login/Logout), protegendo rotas administrativas.
+* **`config`**: Configurações de ambiente, Beans e segurança da aplicação.
 
-## 🛠️ Tecnologias e Ferramentas
+## 🖥️ Módulos da Interface (Frontend)
 
-### **Back-end**
-* **Java 17+**: Linguagem base do sistema.
-* **Spring Boot**: Framework principal para agilidade no desenvolvimento.
-* **Spring Data JPA**: Abstração para persistência de dados.
-* **Hibernate**: Gerenciamento de mapeamento objeto-relacional (ORM).
-* **MySQL**: Banco de dados relacional para armazenamento seguro.
+Desenvolvido com **Thymeleaf** e **Bootstrap**, o sistema conta com as seguintes telas:
 
-### **Front-end**
-* **Thymeleaf**: Engine para renderização de páginas dinâmicas no servidor.
-* **Bootstrap 5**: Design responsivo e componentes modernos.
-* **JavaScript/HTML5/CSS3**: Personalizações de interface e comportamento.
+* 📊 **Dashboard**: Visão geral de indicadores e métricas da loja.
+* 👥 **Clientes**: Cadastro, edição e consulta de base de clientes.
+* 🛠️ **Ordens de Serviço**: Fluxo completo de manutenção, do recebimento à entrega.
+* 💰 **Vendas**: Módulo para venda direta de acessórios e produtos.
+* 📦 **Estoque**: Gerenciamento de peças e produtos com baixa automatizada.
+* 📈 **Relatórios**: Geração de dados para tomada de decisão financeira.
+* 🔐 **Login/Layout**: Sistema de acesso restrito e estrutura visual padronizada.
 
-### **Ferramentas de Desenvolvimento**
-* **Maven**: Gestão de dependências e build do projeto.
-* **Git & GitHub**: Controle de versão.
+## 🛠️ Tecnologias Utilizadas
+* **Back-end:** Java 17, Spring Boot 3, Spring Security, Spring Data JPA.
+* **Banco de Dados:** MySQL (Relacional).
+* **Front-end:** HTML5, CSS3, JavaScript, Thymeleaf, Bootstrap 5.
+* **Gerenciamento:** Maven, Git/GitHub.
 
-## 💻 Como Executar o Projeto
-
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/luizking30/assistencia_full_pro.git](https://github.com/luizking30/assistencia_full_pro.git)
-    ```
-
-2.  **Configuração do Banco de Dados:**
-    Certifique-se de ter o MySQL instalado e crie um schema. No arquivo `src/main/resources/application.properties`, configure:
-    ```properties
-    spring.datasource.url=jdbc:mysql://localhost:3306/nome_do_seu_banco
-    spring.datasource.username=seu_usuario
-    spring.datasource.password=sua_senha
-    ```
-
-3.  **Build e Run:**
-    ```bash
-    mvn clean install
-    mvn spring-boot:run
-    ```
-    A aplicação estará disponível em `http://localhost:8080`.
+## 💻 Como Rodar
+1.  Configure o banco de dados no `application.properties`.
+2.  Execute `mvn clean install`.
+3.  Inicie com `mvn spring-boot:run`.
+4.  Acesse `localhost:8080`.
 
 ---
+## 👨‍💻 Luiz Eduardo Mendonça Amorim
+**Estudante de Sistemas de Informação (4º Semestre)**
+10 anos de experiência técnica em eletrônicos | Desenvolvedor Full-Stack em formação.
 
-## 👨‍💻 Sobre o Desenvolvedor
-
-**Luiz Eduardo Mendonça Amorim**
-* 🎓 Estudante de **Sistemas de Informação** (4º Semestre).
-* 🛠️ 10 anos de experiência como Técnico e Empreendedor na área de eletrônicos.
-* 🚀 Buscando estágio em desenvolvimento **Java** ou **Python**.
-
-**Contatos:**
-* 📱 WhatsApp: (61) 9 8104-8509
-* 📧 E-mail: luiz.eduardo.amorim@hotmail.com
-* 📍 Taguatinga, DF - Brasília.
-
----
-*Este projeto é parte do meu portfólio profissional e está em constante evolução.*
+📱 (61) 9 8104-8509 | 📍 Taguatinga, DF

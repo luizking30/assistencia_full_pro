@@ -21,26 +21,19 @@ public class Venda {
     @Column(name = "valor_total", nullable = false)
     private Double valorTotal = 0.0;
 
-    // Se o erro for "Field 'vendedor' doesn't have a default value",
-    // este @Column garante a integridade.
+    @Column(name = "custo_total_estoque")
+    private Double custoTotalEstoque = 0.0;
+
     @Column(name = "vendedor", nullable = false)
     private String vendedor;
 
-    // CascadeType.ALL é vital para que os itens sejam salvos junto com a venda
     @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemVenda> itens = new ArrayList<>();
 
-    // Construtor padrão obrigatório para o JPA
     public Venda() {
         this.dataHora = LocalDateTime.now();
-        this.valorTotal = 0.0;
     }
 
-    /**
-     * MÉTODO ESSENCIAL: O Spring/Thymeleaf preenche a lista de itens,
-     * mas não seta a referência da "venda" dentro de cada item automaticamente.
-     * Precisamos fazer isso antes de salvar para evitar o Erro 500.
-     */
     @PrePersist
     @PreUpdate
     public void validarDadosAntesDeSalvar() {
@@ -49,21 +42,30 @@ public class Venda {
         }
 
         if (this.vendedor == null || this.vendedor.trim().isEmpty()) {
-            this.vendedor = "Sistema Shark"; // Fallback de segurança
+            this.vendedor = "Sistema Shark";
         }
 
-        if (itens != null) {
-            double totalCalculado = 0.0;
+        double totalVendaCalculado = 0.0;
+        double totalCustoCalculado = 0.0;
+
+        if (itens != null && !itens.isEmpty()) {
             for (ItemVenda item : itens) {
-                // Vincula o item à venda pai (Obrigatório para evitar erro de Transient)
+                // Essencial para o JPA não perder a referência
                 item.setVenda(this);
 
-                // Recalcula o total por segurança
-                double preco = (item.getPrecoUnitario() != null) ? item.getPrecoUnitario() : 0.0;
                 int qtd = (item.getQuantidade() != null) ? item.getQuantidade() : 0;
-                totalCalculado += (preco * qtd);
+
+                // Preço de Venda (o que entra no caixa)
+                double precoVenda = (item.getPrecoUnitario() != null) ? item.getPrecoUnitario() : 0.0;
+                totalVendaCalculado += (precoVenda * qtd);
+
+                // Preço de Custo (o que saiu do seu bolso/estoque)
+                double precoCusto = (item.getCustoUnitario() != null) ? item.getCustoUnitario() : 0.0;
+                totalCustoCalculado += (precoCusto * qtd);
             }
-            this.valorTotal = totalCalculado;
         }
+
+        this.valorTotal = totalVendaCalculado;
+        this.custoTotalEstoque = totalCustoCalculado;
     }
 }

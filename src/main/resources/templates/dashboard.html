@@ -5,6 +5,14 @@
 
 <head>
     <title>Movimento - Shark Eletrônicos</title>
+    <style>
+        .shark-card {
+            background: #1a1a1a;
+            border-radius: 15px;
+            border: 1px solid #333;
+        }
+        .text-gold { color: #ffc107; }
+    </style>
 </head>
 
 <body>
@@ -12,142 +20,93 @@
 
     <div class="mt-2 text-white">
         <div class="d-flex align-items-center mb-4">
-            <h2 class="mb-0 text-white fw-bold"><i class="bi bi-graph-up-arrow text-success"></i> MOVIMENTO DO DIA</h2>
+            <h2 class="mb-0 text-white fw-bold"><i class="bi bi-speedometer2 text-success"></i> DASHBOARD OPERACIONAL</h2>
             <span class="ms-3 badge bg-dark text-info border border-info px-3 py-2"
                   th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}">Data Atual</span>
         </div>
 
         <div class="row g-4 mb-4">
             <div class="col-md-3">
-                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                <div class="card p-4 text-center shadow-sm border-0 h-100 shark-card">
                     <h6 class="text-white-50 small fw-bold text-uppercase">Clientes Novos</h6>
                     <h2 class="text-primary mb-0 fw-bold" th:text="${clientesHoje}">0</h2>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                <div class="card p-4 text-center shadow-sm border-0 h-100 shark-card">
                     <h6 class="text-white-50 small fw-bold text-uppercase">OS Criadas</h6>
                     <h2 class="text-info mb-0 fw-bold" th:text="${osCriadasHoje}">0</h2>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
+                <div class="card p-4 text-center shadow-sm border-0 h-100 shark-card">
                     <h6 class="text-white-50 small fw-bold text-uppercase">Vendas Feitas</h6>
                     <h2 class="text-success mb-0 fw-bold" th:text="${vendasHoje}">0</h2>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card p-4 text-center shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px; border-left: 5px solid #ffc107 !important;">
+                <div class="card p-4 text-center shadow-sm border-0 h-100 shark-card" style="border-left: 5px solid #ffc107 !important;">
                     <h6 class="text-white-50 small fw-bold text-uppercase">OS Entregues</h6>
                     <h2 class="text-warning mb-0 fw-bold" th:text="${osEntreguesHoje}">0</h2>
                 </div>
             </div>
         </div>
 
+        <h5 class="text-success small fw-bold mb-3 text-uppercase"><i class="bi bi-cart-check"></i> Movimento de Vendas (Produtos)</h5>
         <div class="row g-4 mb-5">
             <div class="col-md-4">
-                <div class="card p-4 shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-white-50 small fw-bold text-uppercase">Total em Serviços (OS)</h6>
-                            <h3 class="text-info mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalServicosHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
-                        </div>
-                        <i class="bi bi-tools text-info opacity-50 fs-2"></i>
-                    </div>
+                <div class="card p-4 shadow-sm border-0 h-100 shark-card">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">Venda Bruta (Dia)</h6>
+                    <h3 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalVendasValorHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card p-4 shadow-sm border-0 h-100" style="background: var(--shark-card-bg); border-radius: 15px;">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-white-50 small fw-bold text-uppercase">Total em Vendas</h6>
-                            <h3 class="text-success mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalVendasValorHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
-                        </div>
-                        <i class="bi bi-cart-check text-success opacity-50 fs-2"></i>
-                    </div>
+                <div class="card p-4 shadow-sm border-0 h-100 shark-card">
+                    <h6 class="text-danger small fw-bold text-uppercase">Custo de Estoque (Entrada)</h6>
+                    <h3 class="text-danger mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(custoEstoqueHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card p-4 shadow-sm border-0 h-100" style="background: linear-gradient(45deg, #1a1a1a, #0d1b12); border-radius: 15px; border: 1px solid #06f906 !important;">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-success small fw-bold text-uppercase">FATURAMENTO TOTAL</h6>
-                            <h2 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalFaturadoHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h2>
-                        </div>
-                        <i class="bi bi-cash-coin text-success fs-1"></i>
-                    </div>
+                <div class="card p-4 shadow-sm border-0 h-100" style="background: linear-gradient(45deg, #0d2b14, #1a1a1a); border-radius: 15px; border: 1px solid #198754 !important;">
+                    <h6 class="text-success small fw-bold text-uppercase">Venda Líquida (Lucro)</h6>
+                    <h3 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(vendaLiquidaHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
                 </div>
             </div>
         </div>
 
-        <hr class="border-0 bg-secondary mb-5" style="height: 1px; opacity: 0.2;">
-
-        <div class="d-flex align-items-center mb-4">
-            <h2 class="mb-0 text-white fw-bold"><i class="bi bi-calendar3 text-info"></i> PERFORMANCE 30 DIAS</h2>
-            <span class="ms-3 badge bg-black border border-secondary text-white-50 px-3 py-2">Visão Mensal Shark</span>
-        </div>
-
-        <div class="row g-4 mb-4">
-            <div class="col-md-3">
-                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #0d6efd !important;">
-                    <h6 class="text-white-50 small fw-bold text-uppercase">Novos Clientes (Mês)</h6>
-                    <h2 class="text-primary mb-0 fw-bold" th:text="${clientes30Dias}">0</h2>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #0dcaf0 !important;">
-                    <h6 class="text-white-50 small fw-bold text-uppercase">OS Geradas (Mês)</h6>
-                    <h2 class="text-info mb-0 fw-bold" th:text="${osCriadas30Dias}">0</h2>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #198754 !important;">
-                    <h6 class="text-white-50 small fw-bold text-uppercase">Vendas Totais (Mês)</h6>
-                    <h2 class="text-success mb-0 fw-bold" th:text="${vendas30Dias}">0</h2>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card p-4 text-center border-0 h-100 shadow" style="background: #121212; border-radius: 15px; border-bottom: 3px solid #ffc107 !important;">
-                    <h6 class="text-white-50 small fw-bold text-uppercase">OS Finalizadas (Mês)</h6>
-                    <h2 class="text-warning mb-0 fw-bold" th:text="${osEntregues30Dias}">0</h2>
-                </div>
-            </div>
-        </div>
-
+        <h5 class="text-info small fw-bold mb-3 text-uppercase"><i class="bi bi-tools"></i> Movimento de Serviços (OS)</h5>
         <div class="row g-4 mb-5">
             <div class="col-md-4">
-                <div class="card p-4 shadow border-0 h-100" style="background: #1a1a1a; border-radius: 15px; border: 1px solid #333;">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-white-50 small fw-bold text-uppercase">Serviços Acumulados</h6>
-                            <h3 class="text-info mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalServicos30Dias, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
-                            <small class="text-muted small">Últimos 30 dias</small>
-                        </div>
-                        <i class="bi bi-tools text-info opacity-25 fs-1"></i>
-                    </div>
+                <div class="card p-4 shadow-sm border-0 h-100 shark-card">
+                    <h6 class="text-white-50 small fw-bold text-uppercase">OS Entregues (Bruto)</h6>
+                    <h3 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalServicosHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card p-4 shadow border-0 h-100" style="background: #1a1a1a; border-radius: 15px; border: 1px solid #333;">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="text-white-50 small fw-bold text-uppercase">Vendas Acumuladas</h6>
-                            <h3 class="text-success mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalVendasValor30Dias, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
-                            <small class="text-muted small">Últimos 30 dias</small>
-                        </div>
-                        <i class="bi bi-cart-check text-success opacity-25 fs-1"></i>
-                    </div>
+                <div class="card p-4 shadow-sm border-0 h-100 shark-card">
+                    <h6 class="text-danger small fw-bold text-uppercase">Gasto com Peças (OS)</h6>
+                    <h3 class="text-danger mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalGastoPecasHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card p-4 shadow border-0 h-100" style="background: linear-gradient(135deg, #000000, #111111); border-radius: 15px; border: 2px solid #00d4ff !important;">
-                    <div class="d-flex justify-content-between align-items-start">
+                <div class="card p-4 shadow-sm border-0 h-100" style="background: linear-gradient(45deg, #0b222e, #1a1a1a); border-radius: 15px; border: 1px solid #0dcaf0 !important;">
+                    <h6 class="text-info small fw-bold text-uppercase">Serviço Líquido (Mão de Obra)</h6>
+                    <h3 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(servicoLiquidoHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-12">
+                <div class="card p-4 shadow-lg border-0" style="background: linear-gradient(90deg, #000, #111); border-radius: 15px; border: 2px solid #06f906 !important;">
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-info small fw-bold text-uppercase">FATURAMENTO MENSAL</h6>
-                            <h2 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(totalFaturado30Dias, 1, 'POINT', 2, 'COMMA')}">0,00</span></h2>
-                            <small class="text-white-50">Soma total do período</small>
+                            <h5 class="text-success fw-bold text-uppercase mb-1">Resultado Líquido Total do Dia</h5>
+                            <p class="text-white-50 small mb-0">(Venda Líquida + Serviço Líquido)</p>
                         </div>
-                        <i class="bi bi-trophy text-warning fs-1"></i>
+                        <div class="text-end">
+                            <h1 class="text-white mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(lucroTotalHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h1>
+                        </div>
                     </div>
                 </div>
             </div>

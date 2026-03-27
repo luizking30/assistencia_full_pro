@@ -13,41 +13,46 @@ import java.util.List;
 @Repository
 public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long> {
 
-    // --- 🚀 ORDENAÇÃO PADRÃO (SOBRESCREVENDO O FIND ALL) ---
-    // Isso garante que ao chamar repository.findAll(), venha do maior ID para o menor
     @Override
     default List<OrdemServico> findAll() {
         return findAll(Sort.by(Sort.Direction.DESC, "id"));
     }
 
-    // --- 🔍 BUSCA UNIFICADA (ESTILO GOOGLE) COM ORDENAÇÃO ---
     @Query("SELECT os FROM OrdemServico os WHERE " +
             "LOWER(CONCAT(os.id, '')) LIKE LOWER(CONCAT('%', :termo, '%')) OR " +
             "LOWER(os.clienteNome) LIKE LOWER(CONCAT('%', :termo, '%')) OR " +
             "os.clienteWhatsapp LIKE CONCAT('%', :termo, '%') OR " +
             "LOWER(os.produto) LIKE LOWER(CONCAT('%', :termo, '%')) OR " +
             "LOWER(os.status) LIKE LOWER(CONCAT('%', :termo, '%')) " +
-            "ORDER BY os.id DESC") // Adicionado Order By
+            "ORDER BY os.id DESC")
     List<OrdemServico> buscarSugestoesSugestivas(@Param("termo") String termo);
 
-    // --- BUSCAS PARA RELATÓRIOS E HISTÓRICO ---
-    List<OrdemServico> findByStatusAndDataEntregaBetweenOrderByIdDesc(String status, LocalDateTime inicio, LocalDateTime fim);
-    List<OrdemServico> findByStatusOrderByIdDesc(String status);
+    // --- 🚀 MÉTODOS CORRIGIDOS PARA O DASHBOARD ---
 
-    // --- BUSCAS ESPECÍFICAS ---
-    List<OrdemServico> findByClienteNomeContainingIgnoreCaseOrderByIdDesc(String nome);
-    List<OrdemServico> findByClienteWhatsappContainingOrderByIdDesc(String whatsapp);
-    List<OrdemServico> findByProdutoContainingIgnoreCaseOrderByIdDesc(String produto);
-
-    // --- CONTADORES PARA O DASHBOARD (Permanecem iguais) ---
+    // Conta OS criadas hoje (Data de abertura)
     long countByDataBetween(LocalDateTime inicio, LocalDateTime fim);
-    long countByStatusAndDataBetween(String status, LocalDateTime inicio, LocalDateTime fim);
 
-    // --- FINANCEIRO (DASHBOARD) ---
+    // Conta OS entregues hoje (IMPORTANTE: Agora usa o campo 'dataEntrega')
+    long countByStatusAndDataEntregaBetween(String status, LocalDateTime inicio, LocalDateTime fim);
+
+    // Soma o Valor Bruto das OS entregues hoje
     @Query("SELECT COALESCE(SUM(os.valorTotal), 0.0) FROM OrdemServico os " +
             "WHERE os.status = :status " +
             "AND os.dataEntrega BETWEEN :inicio AND :fim")
-    Double somarValorServicosDoDia(@Param("status") String status,
-                                   @Param("inicio") LocalDateTime inicio,
-                                   @Param("fim") LocalDateTime fim);
+    Double somarValorBrutoOsEntregues(@Param("status") String status,
+                                      @Param("inicio") LocalDateTime inicio,
+                                      @Param("fim") LocalDateTime fim);
+
+    // NOVO: Soma o Custo de Peças das OS entregues hoje
+    @Query("SELECT COALESCE(SUM(os.custoPeca), 0.0) FROM OrdemServico os " +
+            "WHERE os.status = :status " +
+            "AND os.dataEntrega BETWEEN :inicio AND :fim")
+    Double somarCustoPecasOsEntregues(@Param("status") String status,
+                                      @Param("inicio") LocalDateTime inicio,
+                                      @Param("fim") LocalDateTime fim);
+
+    // --- OUTRAS BUSCAS ---
+    List<OrdemServico> findByStatusAndDataEntregaBetweenOrderByIdDesc(String status, LocalDateTime inicio, LocalDateTime fim);
+    List<OrdemServico> findByStatusOrderByIdDesc(String status);
+    List<OrdemServico> findByClienteNomeContainingIgnoreCaseOrderByIdDesc(String nome);
 }

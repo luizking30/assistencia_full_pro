@@ -25,6 +25,12 @@
         #totalVenda {
             text-shadow: 0 0 10px rgba(25, 135, 84, 0.5);
         }
+        .preco-antigo {
+            text-decoration: line-through;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+        .x-small { font-size: 0.75rem; }
     </style>
 </head>
 <body>
@@ -54,24 +60,24 @@
         <div class="card bg-dark border-primary shadow-lg mb-5" style="border-radius: 15px; border-width: 2px;">
             <div class="card-body p-4">
                 <form th:action="@{/vendas/salvar}" th:object="${venda}" method="post" id="formVenda">
-
                     <div class="row g-3 align-items-end mb-4 pb-4 border-bottom border-secondary">
-                        <div class="col-md-6 position-relative">
+                        <div class="col-md-4 position-relative">
                             <label class="form-label text-primary small fw-bold text-uppercase">Buscar Produto</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-black border-secondary text-primary"><i class="bi bi-search"></i></span>
-                                <input type="text" id="campoBusca" class="form-control bg-black text-white border-secondary shadow-none"
-                                       placeholder="Digite nome ou ID do produto..." autocomplete="off">
+                                <input type="text" id="campoBusca" class="form-control bg-black text-white border-secondary shadow-none" placeholder="Nome ou ID..." autocomplete="off">
                             </div>
                             <div id="sugestoesProdutos" class="list-group position-absolute w-100 shadow-lg bg-dark"></div>
-
                             <input type="hidden" id="produtoIdReal">
                             <input type="hidden" id="nomeSelecionado">
                         </div>
-
                         <div class="col-md-2">
                             <label class="form-label text-primary small fw-bold text-uppercase">Preço (R$)</label>
-                            <input type="number" id="precoBusca" step="0.01" class="form-control bg-black text-white border-secondary shadow-none">
+                            <input type="number" id="precoBusca" step="0.01" class="form-control bg-black text-white border-secondary shadow-none" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-warning small fw-bold text-uppercase">Desconto (%)</label>
+                            <input type="number" id="descontoBusca" class="form-control bg-black text-warning border-warning shadow-none" value="0" min="0" max="10">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label text-primary small fw-bold text-uppercase">Qtd</label>
@@ -96,8 +102,7 @@
                                 <th class="text-center">REMOVER</th>
                             </tr>
                             </thead>
-                            <tbody id="listaItens">
-                            </tbody>
+                            <tbody id="listaItens"></tbody>
                         </table>
                     </div>
 
@@ -121,7 +126,7 @@
             </h4>
             <div class="text-end">
                 <span class="h4 fw-bold text-success ms-2"
-                      th:text="'R$ ' + ${#numbers.formatDecimal(totalVendasHoje, 1, 'POINT', 2, 'COMMA')}">
+                      th:text="'R$ ' + ${#numbers.formatDecimal(totalVendasHoje != null ? totalVendasHoje : 0, 1, 'POINT', 2, 'COMMA')}">
                 </span>
             </div>
         </div>
@@ -131,18 +136,18 @@
                 <table class="table table-hover table-dark mb-0 align-middle">
                     <thead class="bg-black text-white-50 text-uppercase small">
                     <tr>
-                        <th class="ps-4">HORÁRIO</th>
+                        <th class="ps-4">DATA/HORA</th>
                         <th>VENDEDOR</th>
-                        <th>RESUMO</th>
-                        <th>TOTAL</th>
+                        <th>PRODUTOS (ID | PREÇO | DESC)</th>
+                        <th>TOTAL FINAL</th>
                         <th class="text-center">AÇÕES</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="v : ${vendas}">
                         <td class="ps-4">
-                            <span class="text-white" th:text="${#temporals.format(v.dataHora, 'HH:mm')}"></span>
-                            <div class="text-primary x-small">ID #<span th:text="${v.id}"></span></div>
+                            <div class="text-white" th:text="${#temporals.format(v.dataHora, 'dd/MM HH:mm')}"></div>
+                            <div class="text-primary x-small">VENDA #<span th:text="${v.id}"></span></div>
                         </td>
                         <td>
                             <span class="badge bg-outline-info border border-info text-info p-2">
@@ -151,27 +156,34 @@
                             </span>
                         </td>
                         <td>
-                            <div th:each="item : ${v.itens}">
-                                <small class="text-white-50" th:text="${item.quantidade + 'x ' + item.produto.nome}"></small>
+                            <div th:each="item : ${v.itens}" class="mb-1 border-bottom border-secondary pb-1">
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-white">
+                                        <span class="text-primary fw-bold" th:text="'#' + ${item.produto.id}"></span> |
+                                        <span th:text="${item.produto.nome}"></span>
+                                    </small>
+                                    <span th:if="${item.desconto > 0}" class="badge bg-warning text-dark x-small">
+                                        -<span th:text="${item.desconto}"></span>%
+                                    </span>
+                                </div>
+                                <small class="text-white-50">
+                                    <span th:text="${item.quantidade} + 'x R$ ' + ${#numbers.formatDecimal(item.precoUnitario, 1, 'POINT', 2, 'COMMA')}"></span>
+                                </small>
                             </div>
                         </td>
                         <td class="text-success fw-bold" th:text="'R$ ' + ${#numbers.formatDecimal(v.valorTotal, 1, 'POINT', 2, 'COMMA')}"></td>
                         <td class="text-center">
                             <div class="btn-group">
-                                <a th:href="@{'/vendas/comprovante/' + ${v.id}}" target="_blank" class="btn btn-sm btn-outline-info" title="Imprimir Recibo">
+                                <a th:href="@{'/vendas/pdf/' + ${v.id}}" target="_blank" class="btn btn-sm btn-outline-info" title="Imprimir Recibo">
                                     <i class="bi bi-printer"></i>
                                 </a>
-                                <form th:action="@{/vendas/deletar/{id}(id=${v.id})}" method="post"
-                                      onsubmit="return confirm('ATENÇÃO: Estornar esta venda devolverá os itens ao estoque. Confirmar?')">
+                                <form th:action="@{/vendas/deletar/{id}(id=${v.id})}" method="post" onsubmit="return confirm('Estornar venda?')">
                                     <button type="submit" class="btn btn-sm btn-outline-danger ms-1">
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                     </button>
                                 </form>
                             </div>
                         </td>
-                    </tr>
-                    <tr th:if="${#lists.isEmpty(vendas)}">
-                        <td colspan="5" class="text-center py-4 text-muted">Nenhuma venda registrada na Shark hoje.</td>
                     </tr>
                     </tbody>
                 </table>
@@ -183,10 +195,10 @@
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
         let itensVenda = [];
-
         const campoBusca = document.getElementById('campoBusca');
         const sugestoesBox = document.getElementById('sugestoesProdutos');
         const precoInput = document.getElementById('precoBusca');
+        const descontoInput = document.getElementById('descontoBusca');
         const qtdInput = document.getElementById('qtdBusca');
         const formVenda = document.getElementById('formVenda');
 
@@ -196,14 +208,9 @@
         }
         setInterval(atualizarRelogio, 1000);
 
-        // Busca de produtos dinâmica
         campoBusca.addEventListener('input', function() {
             const termo = this.value;
-            if (termo.length < 2) {
-                sugestoesBox.style.display = 'none';
-                return;
-            }
-
+            if (termo.length < 2) { sugestoesBox.style.display = 'none'; return; }
             fetch('/estoque/sugestoes?termo=' + encodeURIComponent(termo))
                 .then(res => res.json())
                 .then(produtos => {
@@ -212,22 +219,12 @@
                         produtos.forEach(p => {
                             const item = document.createElement('div');
                             item.className = 'list-group-item list-group-item-action bg-dark text-white suggestion-item';
-                            const statusEstoque = p.quantidade <= 0 ? '<span class="text-danger">Esgotado</span>' : `Estoque: ${p.quantidade}`;
-
-                            item.innerHTML = `
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span><strong>#${p.id}</strong> ${p.nome}</span>
-                                    <span class="badge bg-success">R$ ${p.precoVenda.toFixed(2)}</span>
-                                </div>
-                                <small class="text-muted">${statusEstoque}</small>
-                            `;
+                            item.innerHTML = `<div class="d-flex justify-content-between"><span>#${p.id} ${p.nome}</span><span class="badge bg-success">R$ ${p.precoVenda.toFixed(2)}</span></div>`;
                             item.onclick = () => selecionarProduto(p);
                             sugestoesBox.appendChild(item);
                         });
                         sugestoesBox.style.display = 'block';
-                    } else {
-                        sugestoesBox.style.display = 'none';
-                    }
+                    } else { sugestoesBox.style.display = 'none'; }
                 });
         });
 
@@ -236,24 +233,34 @@
             document.getElementById('nomeSelecionado').value = p.nome;
             campoBusca.value = p.nome;
             precoInput.value = p.precoVenda;
+            descontoInput.value = 0;
             sugestoesBox.style.display = 'none';
-            qtdInput.focus();
+            descontoInput.focus();
         }
 
         function adicionarItem() {
             const id = document.getElementById('produtoIdReal').value;
             const nome = document.getElementById('nomeSelecionado').value;
-            const preco = parseFloat(precoInput.value);
+            const precoOriginal = parseFloat(precoInput.value);
+            const descontoPerc = parseFloat(descontoInput.value) || 0;
             const qtd = parseInt(qtdInput.value);
 
-            if (!id || isNaN(preco) || qtd < 1) {
-                alert("Selecione um produto válido da lista!");
+            if (!id || isNaN(precoOriginal) || qtd < 1) {
+                alert("Selecione um produto válido!");
                 return;
             }
 
-            const subtotal = preco * qtd;
-            itensVenda.push({ id, nome, preco, qtd, subtotal });
+            if (descontoPerc > 10) {
+                alert("O máximo permitido é 10%!");
+                descontoInput.value = 10;
+                return;
+            }
 
+            const valorDesconto = precoOriginal * (descontoPerc / 100);
+            const precoFinal = precoOriginal - valorDesconto;
+            const subtotal = precoFinal * qtd;
+
+            itensVenda.push({ id, nome, precoOriginal, precoFinal, desconto: descontoPerc, qtd, subtotal });
             atualizarTabela();
             limparCamposBusca();
         }
@@ -262,76 +269,50 @@
             const tbody = document.getElementById('listaItens');
             tbody.innerHTML = '';
             let totalGeral = 0;
-
             itensVenda.forEach((item, index) => {
                 totalGeral += item.subtotal;
-                // Os names abaixo seguem o padrão que o Spring Boot espera: itens[index].propriedade
+                let precoDisplay = `R$ ${item.precoFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                if (item.desconto > 0) {
+                    precoDisplay = `<div class="preco-antigo">R$ ${item.precoOriginal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div><div class="text-white">${precoDisplay} <span class="badge bg-warning text-dark small">-${item.desconto}%</span></div>`;
+                }
+
+                // ADICIONADO: Input hidden para o desconto ser enviado ao Java
                 tbody.innerHTML += `
                     <tr>
-                        <td class="ps-4">#${item.id}
-                            <input type="hidden" name="itens[${index}].produto.id" value="${item.id}">
-                        </td>
+                        <td class="ps-4">#${item.id}<input type="hidden" name="itens[${index}].produto.id" value="${item.id}"></td>
                         <td>${item.nome}</td>
-                        <td class="text-center">${item.qtd}
-                            <input type="hidden" name="itens[${index}].quantidade" value="${item.qtd}">
-                        </td>
-                        <td>R$ ${item.preco.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                            <input type="hidden" name="itens[${index}].precoUnitario" value="${item.preco}">
+                        <td class="text-center">${item.qtd}<input type="hidden" name="itens[${index}].quantidade" value="${item.qtd}"></td>
+                        <td>
+                            ${precoDisplay}
+                            <input type="hidden" name="itens[${index}].precoUnitario" value="${item.precoFinal}">
+                            <input type="hidden" name="itens[${index}].desconto" value="${item.desconto}">
                         </td>
                         <td class="text-success fw-bold">R$ ${item.subtotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
                         <td class="text-center">
-                            <button type="button" onclick="removerItem(${index})" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                            <button type="button" onclick="removerItem(${index})" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>`;
             });
-
             document.getElementById('totalVenda').innerText = `R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             document.getElementById('inputTotalVenda').value = totalGeral.toFixed(2);
         }
 
-        function removerItem(i) {
-            itensVenda.splice(i, 1);
-            atualizarTabela();
-        }
+        function removerItem(i) { itensVenda.splice(i, 1); atualizarTabela(); }
 
         function limparCamposBusca() {
             campoBusca.value = '';
             document.getElementById('produtoIdReal').value = '';
             document.getElementById('nomeSelecionado').value = '';
             precoInput.value = '';
+            descontoInput.value = '0';
             qtdInput.value = '1';
             campoBusca.focus();
         }
 
-        // Bloqueio de envio sem itens
-        formVenda.onsubmit = function(e) {
-            if (itensVenda.length === 0) {
-                e.preventDefault();
-                alert("O carrinho está vazio!");
-                return false;
-            }
-        };
+        formVenda.onsubmit = function(e) { if (itensVenda.length === 0) { e.preventDefault(); alert("Carrinho vazio!"); return false; } };
 
-        // Atalho F2
         document.addEventListener('keydown', function(e) {
-            if (e.key === "F2") {
-                e.preventDefault();
-                // Força a validação antes do submit
-                if(itensVenda.length > 0) {
-                    formVenda.submit();
-                } else {
-                    alert("Adicione itens antes de finalizar!");
-                }
-            }
-        });
-
-        // Fecha sugestões ao clicar fora
-        document.addEventListener('click', function(e) {
-            if (!campoBusca.contains(e.target) && !sugestoesBox.contains(e.target)) {
-                sugestoesBox.style.display = 'none';
-            }
+            if (e.key === "F2") { e.preventDefault(); if(itensVenda.length > 0) formVenda.submit(); }
         });
     </script>
 </th:block>

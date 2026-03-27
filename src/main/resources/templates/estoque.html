@@ -11,39 +11,44 @@
 <div layout:fragment="conteudo">
     <div class="mt-2">
         <div class="mb-4">
-            <h2 class="fw-bold mb-0 text-white"><i class="bi bi-box-seam text-primary"></i> Controle de Estoque</h2>
+            <h2 class="fw-bold mb-0 text-white"><i class="bi bi-box-seam" style="color: var(--shark-light-blue)"></i> Controle de Estoque</h2>
             <p class="text-white-50 small">Gerencie entrada, saída e performance financeira do seu inventário</p>
         </div>
 
-        <div class="card bg-dark border-primary shadow-lg mb-4" style="border-radius: 15px; border-width: 2px;">
+        <div class="card bg-dark border-primary shadow-lg mb-4" style="border-radius: 15px; border-width: 2px; background: rgba(15, 23, 42, 0.6) !important;">
             <div class="card-body p-4">
                 <form th:action="@{/estoque/salvar}" method="post" id="formEstoque" class="row g-3 align-items-end">
-                    <input type="hidden" id="campoId" name="id">
+
+                    <div class="col-md-2">
+                        <label class="form-label text-info small fw-bold text-uppercase">ID do Produto</label>
+                        <input id="campoId" name="id" type="number" class="form-control bg-black text-white border-secondary shadow-none"
+                               placeholder="Ex: 101" required onchange="verificarDuplicidade(this.value)">
+                    </div>
 
                     <div class="col-md-3">
-                        <label class="form-label text-success small fw-bold text-uppercase">Nome do Produto</label>
+                        <label class="form-label text-info small fw-bold text-uppercase">Nome do Produto</label>
                         <input id="campoNome" name="nome" class="form-control bg-black text-white border-secondary shadow-none" placeholder="Ex: Teclado Mecânico" required>
                     </div>
 
                     <div class="col-md-2">
-                        <label class="form-label text-success small fw-bold text-uppercase">Preço Entrada (Und)</label>
+                        <label class="form-label text-info small fw-bold text-uppercase">Custo (Und)</label>
                         <input id="campoPrecoCusto" name="precoCusto" type="number" step="0.01" class="form-control bg-black text-white border-secondary shadow-none" placeholder="0.00" required>
                     </div>
 
                     <div class="col-md-2">
-                        <label class="form-label text-success small fw-bold text-uppercase">Preço Saída (Und)</label>
+                        <label class="form-label text-info small fw-bold text-uppercase">Venda (Und)</label>
                         <input id="campoPrecoVenda" name="precoVenda" type="number" step="0.01" class="form-control bg-black text-white border-secondary shadow-none" placeholder="0.00" required>
                     </div>
 
-                    <div class="col-md-2">
-                        <label class="form-label text-success small fw-bold text-uppercase">Quantidade</label>
+                    <div class="col-md-1">
+                        <label class="form-label text-info small fw-bold text-uppercase">Qtd</label>
                         <input id="campoQtd" name="quantidade" type="number" class="form-control bg-black text-white border-secondary shadow-none" value="1" required>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="d-flex gap-2">
                             <button type="submit" id="btnAcao" class="btn btn-primary w-100 fw-bold">
-                                <i class="bi bi-plus-circle me-2"></i>SALVAR ITEM
+                                <i class="bi bi-plus-circle"></i> SALVAR
                             </button>
                             <button type="button" id="btnCancelar" class="btn btn-outline-secondary d-none" onclick="limparFormulario()">
                                 <i class="bi bi-x-lg"></i>
@@ -54,51 +59,91 @@
             </div>
         </div>
 
-        <div class="card shadow-lg border-secondary bg-dark text-white mb-4" style="border-radius: 15px; overflow: hidden;">
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card bg-black border-danger p-3 shadow-sm" style="border-radius: 12px;">
+                    <p class="text-danger small fw-bold mb-1 text-uppercase">Total Investido</p>
+                    <h3 class="fw-bold text-white mb-0"
+                        th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoCusto * quantidade]) ?: 0, 1, 'POINT', 2, 'COMMA')}">
+                    </h3>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card bg-black border-info p-3 shadow-sm" style="border-radius: 12px; border-style: dashed;"
+                     th:with="totalCusto=${#aggregates.sum(produtos.![precoCusto * quantidade]) ?: 0},
+                              totalVenda=${#aggregates.sum(produtos.![precoVenda * quantidade]) ?: 0},
+                              lucroTotal=${totalVenda - totalCusto}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-info small fw-bold mb-1 text-uppercase">Lucro Líquido Esperado</p>
+                            <h3 class="fw-bold text-white mb-0"
+                                th:text="${'R$ ' + #numbers.formatDecimal(lucroTotal, 1, 'POINT', 2, 'COMMA')}">
+                            </h3>
+                        </div>
+                        <span class="badge rounded-pill bg-info text-dark fw-bold px-3 py-2"
+                              th:if="${totalCusto > 0}"
+                              th:text="${#numbers.formatDecimal((lucroTotal / totalCusto) * 100, 1, 1) + '%'}">
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card bg-black border-success p-3 shadow-sm" style="border-radius: 12px;">
+                    <p class="text-success small fw-bold mb-1 text-uppercase">Previsão de Retorno</p>
+                    <h3 class="fw-bold text-white mb-0"
+                        th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoVenda * quantidade]) ?: 0, 1, 'POINT', 2, 'COMMA')}">
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-lg border-secondary bg-dark text-white mb-5" style="border-radius: 15px; overflow: hidden;">
             <div class="table-responsive">
                 <table class="table table-hover table-dark mb-0 align-middle">
                     <thead class="bg-black text-muted text-uppercase small">
                     <tr>
-                        <th class="ps-4">PRODUTO</th>
+                        <th class="ps-4">ID</th>
+                        <th>PRODUTO</th>
                         <th class="text-center">QTD</th>
-                        <th>ENTRADA (UND)</th>
-                        <th>ENTRADA (TOTAL)</th>
-                        <th>SAÍDA (UND)</th>
-                        <th>SAÍDA (TOTAL)</th>
+                        <th>VENDA (UND)</th>
+                        <th>LUCRO (UND)</th>
+                        <th>CUSTO TOTAL</th>
+                        <th>VENDA TOTAL</th>
                         <th class="text-center">STATUS</th>
                         <th class="text-center">AÇÕES</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="p : ${produtos}">
-                        <td class="ps-4">
-                            <span class="fw-bold" th:text="${p.nome}"></span><br>
-                            <small class="text-primary" th:text="'ID: ' + ${p.id}"></small>
+                        <td class="ps-4 fw-bold text-info" th:text="${p.id}"></td>
+                        <td class="fw-bold" th:text="${p.nome}"></td>
+                        <td class="text-center fw-bold" th:text="${p.quantidade}"></td>
+
+                        <td class="text-success fw-bold" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda, 1, 'POINT', 2, 'COMMA')}"></td>
+
+                        <td class="text-info fw-bold"
+                            th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda - p.precoCusto, 1, 'POINT', 2, 'COMMA')}">
                         </td>
-                        <td class="text-center fw-bold text-info" th:text="${p.quantidade}"></td>
 
-                        <td class="text-white-50" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto, 1, 'POINT', 2, 'COMMA')}"></td>
-
-                        <td class="text-danger fw-bold" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
-
-                        <td class="text-white-50" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda, 1, 'POINT', 2, 'COMMA')}"></td>
-
-                        <td class="text-success fw-bold" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td class="text-danger" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
+                        <td class="text-success" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
 
                         <td class="text-center">
                             <span th:if="${p.quantidade <= 2}" class="badge bg-danger">CRÍTICO</span>
                             <span th:if="${p.quantidade > 2 && p.quantidade <= 5}" class="badge bg-warning text-dark">BAIXO</span>
                             <span th:if="${p.quantidade > 5}" class="badge bg-success">OK</span>
                         </td>
-
                         <td class="text-center">
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-outline-info" th:onclick="'carregarParaEdicao(' + ${p.id} + ')'">
+                            <div class="btn-group gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-info" th:onclick="|carregarParaEdicao('${p.id}')|">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-                                <form sec:authorize="hasRole('ADMIN')" th:action="@{/estoque/deletar/{id}(id=${p.id})}" method="post" style="display:inline"
-                                      onsubmit="return confirm('Remover item da Shark?')">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger ms-1"><i class="bi bi-trash"></i></button>
+                                <form sec:authorize="hasRole('ADMIN')" th:action="@{/estoque/deletar/{id}(id=${p.id})}" method="post" style="display:inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover da Shark?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 </form>
                             </div>
                         </td>
@@ -107,45 +152,31 @@
                 </table>
             </div>
         </div>
-
-        <div class="row g-3 mb-5">
-            <div class="col-md-6">
-                <div class="card bg-black border-danger p-3 shadow">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-danger small fw-bold mb-0 text-uppercase">Total Investido (Custo)</p>
-                            <h3 class="fw-bold text-white mb-0"
-                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoCusto * quantidade]), 1, 'POINT', 2, 'COMMA')}">
-                            </h3>
-                        </div>
-                        <i class="bi bi-graph-down-arrow text-danger fs-1 opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card bg-black border-success p-3 shadow">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-success small fw-bold mb-0 text-uppercase">Valor Total de Saída (Venda)</p>
-                            <h3 class="fw-bold text-white mb-0"
-                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoVenda * quantidade]), 1, 'POINT', 2, 'COMMA')}">
-                            </h3>
-                        </div>
-                        <i class="bi bi-graph-up-arrow text-success fs-1 opacity-50"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
+        function verificarDuplicidade(id) {
+            if (!id) return;
+            fetch('/estoque/buscar/' + id)
+                .then(response => {
+                    if (response.ok) return response.json();
+                    throw new Error('Novo ID');
+                })
+                .then(data => {
+                    alert("Atenção: O ID " + id + " já está cadastrado (" + data.nome + "). O sistema entrou em modo de EDIÇÃO.");
+                    carregarParaEdicao(data.id);
+                })
+                .catch(err => { /* ID livre para cadastro */ });
+        }
+
         function carregarParaEdicao(id) {
             fetch('/estoque/buscar/' + id)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('campoId').value = data.id;
+                    document.getElementById('campoId').readOnly = true;
                     document.getElementById('campoNome').value = data.nome;
                     document.getElementById('campoPrecoCusto').value = data.precoCusto;
                     document.getElementById('campoPrecoVenda').value = data.precoVenda;
@@ -155,17 +186,17 @@
                     btnAcao.innerHTML = '<i class="bi bi-check-lg me-2"></i>ATUALIZAR';
                     btnAcao.classList.replace('btn-primary', 'btn-info');
                     document.getElementById('btnCancelar').classList.remove('d-none');
-
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 });
         }
 
         function limparFormulario() {
             document.getElementById('campoId').value = '';
+            document.getElementById('campoId').readOnly = false;
             document.getElementById('formEstoque').reset();
             const btnAcao = document.getElementById('btnAcao');
-            btnAcao.innerHTML = '<i class="bi bi-plus-circle me-2"></i>SALVAR ITEM';
-            btnAcao.classList.replace('btn-info', 'btn-primary');
+            btnAcao.innerHTML = '<i class="bi bi-plus-circle me-2"></i>SALVAR';
+            if(btnAcao.classList.contains('btn-info')) btnAcao.classList.replace('btn-info', 'btn-primary');
             document.getElementById('btnCancelar').classList.add('d-none');
         }
     </script>

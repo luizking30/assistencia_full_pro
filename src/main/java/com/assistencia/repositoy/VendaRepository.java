@@ -18,12 +18,16 @@ public interface VendaRepository extends JpaRepository<Venda, Long> {
     // Conta a quantidade de vendas (Para o card "Vendas Feitas")
     long countByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
 
-    // SOMA o valor total das vendas do dia (Para o card "Total em Vendas")
-    // O COALESCE garante que, se não houver vendas, o retorno seja 0.0 em vez de null
+    // 1. SOMA o faturamento BRUTO de vendas do dia
     @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
     Double somarVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
-    // OPCIONAL: Busca vendas de um cliente específico pelo nome (útil para filtros futuros)
+    // 2. 🚀 MÉTODO ADICIONADO PARA RESOLVER O ERRO DO CONTROLLER
+    // Soma o CUSTO total de estoque das vendas (Para o card "Custo de Estoque")
+    @Query("SELECT COALESCE(SUM(v.custoTotalEstoque), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
+    Double somarCustoEstoqueDasVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+
+    // Busca vendas por nome de produto (Opcional)
     @Query("SELECT v FROM Venda v JOIN v.itens i WHERE i.produto.nome LIKE %:nome%")
     List<Venda> findByNomeProduto(@Param("nome") String nome);
 }

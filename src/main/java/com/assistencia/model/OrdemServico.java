@@ -1,4 +1,4 @@
-package com.assistencia.model; // Verifique se esta linha é a primeira do arquivo
+package com.assistencia.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -14,7 +14,6 @@ public class OrdemServico {
     private String clienteNome;
     private String clienteCpf;
     private String clienteWhatsapp;
-
     private String produto;
 
     @Column(columnDefinition = "TEXT")
@@ -24,18 +23,20 @@ public class OrdemServico {
     private String status;
 
     private LocalDateTime data; // Data de abertura
+    private LocalDateTime dataEntrega; // Data de finalização/entrega
 
-    private LocalDateTime dataEntrega; // Para o relatório de serviços entregues
+    private Double valorTotal; // Valor cobrado do cliente
+    private Double custoPeca = 0.0; // Valor gasto com peças (Custo)
 
-    private Double valorTotal; // Alinhado com o seu Controller e Relatório
-
-    // Construtor Padrão (Obrigatório para o JPA/Hibernate)
+    // --- CONSTRUTOR ---
     public OrdemServico() {
         this.data = LocalDateTime.now();
-        this.status = "ABERTA";
+        if (this.status == null) {
+            this.status = "Em análise"; // Alinhado com o seu Dashboard
+        }
     }
 
-    // --- Getters e Setters ---
+    // --- GETTERS E SETTERS ---
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -67,7 +68,11 @@ public class OrdemServico {
     public Double getValorTotal() { return valorTotal; }
     public void setValorTotal(Double valorTotal) { this.valorTotal = valorTotal; }
 
-    // Método de compatibilidade (Alias) para evitar erros se houver chamadas para 'getValor'
+    public Double getCustoPeca() { return custoPeca; }
+    public void setCustoPeca(Double custoPeca) { this.custoPeca = custoPeca; }
+
+    // --- MÉTODOS DE COMPATIBILIDADE (ALIASE) ---
+    // Mantidos para evitar erro em partes do código que usem .getValor()
     public Double getValor() { return valorTotal; }
     public void setValor(Double valor) { this.valorTotal = valor; }
 }

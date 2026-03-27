@@ -5,17 +5,36 @@
       layout:decorate="~{layout}">
 <head>
     <title>Estoque - Shark Eletrônicos</title>
+    <style>
+        .shark-card {
+            background: #1a1a1a;
+            border-radius: 15px;
+            border: none;
+            border-left: 5px solid #333;
+            transition: all 0.3s ease;
+        }
+        .shark-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            filter: brightness(1.2);
+        }
+        .border-left-danger { border-left-color: #dc3545 !important; }
+        .border-left-info { border-left-color: #0dcaf0 !important; }
+        .border-left-success { border-left-color: #198754 !important; }
+
+        .glow-info { filter: drop-shadow(0 0 5px #0dcaf0); }
+    </style>
 </head>
 
 <body>
 <div layout:fragment="conteudo">
     <div class="mt-2">
         <div class="mb-4">
-            <h2 class="fw-bold mb-0 text-white"><i class="bi bi-box-seam" style="color: var(--shark-light-blue)"></i> Controle de Estoque</h2>
+            <h2 class="fw-bold mb-0 text-white"><i class="bi bi-box-seam glow-info" style="color: #0dcaf0"></i> Controle de Estoque</h2>
             <p class="text-white-50 small">Gerencie entrada, saída e performance financeira do seu inventário</p>
         </div>
 
-        <div class="card bg-dark border-primary shadow-lg mb-4" style="border-radius: 15px; border-width: 2px; background: rgba(15, 23, 42, 0.6) !important;">
+        <div class="card shark-card border-left-info shadow-lg mb-4" style="background: rgba(15, 23, 42, 0.6) !important;">
             <div class="card-body p-4">
                 <form th:action="@{/estoque/salvar}" method="post" id="formEstoque" class="row g-3 align-items-end">
 
@@ -47,7 +66,7 @@
 
                     <div class="col-md-2">
                         <div class="d-flex gap-2">
-                            <button type="submit" id="btnAcao" class="btn btn-primary w-100 fw-bold">
+                            <button type="submit" id="btnAcao" class="btn btn-info w-100 fw-bold">
                                 <i class="bi bi-plus-circle"></i> SALVAR
                             </button>
                             <button type="button" id="btnCancelar" class="btn btn-outline-secondary d-none" onclick="limparFormulario()">
@@ -61,7 +80,7 @@
 
         <div class="row g-3 mb-4">
             <div class="col-md-4">
-                <div class="card bg-black border-danger p-3 shadow-sm" style="border-radius: 12px;">
+                <div class="card p-3 shark-card border-left-danger shadow-sm">
                     <p class="text-danger small fw-bold mb-1 text-uppercase">Total Investido</p>
                     <h3 class="fw-bold text-white mb-0"
                         th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoCusto * quantidade]) ?: 0, 1, 'POINT', 2, 'COMMA')}">
@@ -70,7 +89,7 @@
             </div>
 
             <div class="col-md-4">
-                <div class="card bg-black border-info p-3 shadow-sm" style="border-radius: 12px; border-style: dashed;"
+                <div class="card p-3 shark-card border-left-info shadow-sm"
                      th:with="totalCusto=${#aggregates.sum(produtos.![precoCusto * quantidade]) ?: 0},
                               totalVenda=${#aggregates.sum(produtos.![precoVenda * quantidade]) ?: 0},
                               lucroTotal=${totalVenda - totalCusto}">
@@ -90,7 +109,7 @@
             </div>
 
             <div class="col-md-4">
-                <div class="card bg-black border-success p-3 shadow-sm" style="border-radius: 12px;">
+                <div class="card p-3 shark-card border-left-success shadow-sm">
                     <p class="text-success small fw-bold mb-1 text-uppercase">Previsão de Retorno</p>
                     <h3 class="fw-bold text-white mb-0"
                         th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(produtos.![precoVenda * quantidade]) ?: 0, 1, 'POINT', 2, 'COMMA')}">
@@ -99,7 +118,7 @@
             </div>
         </div>
 
-        <div class="card shadow-lg border-secondary bg-dark text-white mb-5" style="border-radius: 15px; overflow: hidden;">
+        <div class="card shadow-lg border-0 bg-dark text-white mb-5" style="border-radius: 15px; overflow: hidden; border-left: 5px solid #333 !important;">
             <div class="table-responsive">
                 <table class="table table-hover table-dark mb-0 align-middle">
                     <thead class="bg-black text-muted text-uppercase small">
@@ -120,16 +139,12 @@
                         <td class="ps-4 fw-bold text-info" th:text="${p.id}"></td>
                         <td class="fw-bold" th:text="${p.nome}"></td>
                         <td class="text-center fw-bold" th:text="${p.quantidade}"></td>
-
                         <td class="text-success fw-bold" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda, 1, 'POINT', 2, 'COMMA')}"></td>
-
                         <td class="text-info fw-bold"
                             th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda - p.precoCusto, 1, 'POINT', 2, 'COMMA')}">
                         </td>
-
                         <td class="text-danger" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
                         <td class="text-success" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
-
                         <td class="text-center">
                             <span th:if="${p.quantidade <= 2}" class="badge bg-danger">CRÍTICO</span>
                             <span th:if="${p.quantidade > 2 && p.quantidade <= 5}" class="badge bg-warning text-dark">BAIXO</span>

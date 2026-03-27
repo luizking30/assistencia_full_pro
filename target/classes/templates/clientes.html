@@ -5,6 +5,33 @@
       layout:decorate="~{layout}">
 <head>
     <title>Gestão de Clientes - Shark Eletrônicos</title>
+    <style>
+        .shark-card {
+            background: #1a1a1a;
+            border-radius: 15px;
+            border: none;
+            border-left: 5px solid #333;
+            transition: all 0.3s ease;
+        }
+        .shark-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            filter: brightness(1.2);
+        }
+        .border-left-info { border-left-color: #0dcaf0 !important; }
+        .border-left-success { border-left-color: #198754 !important; }
+
+        .glow-info { filter: drop-shadow(0 0 5px #0dcaf0); }
+
+        .btn-link-shark:hover {
+            color: #0dcaf0 !important;
+            transform: scale(1.05);
+            display: inline-block;
+        }
+        .form-control {
+            border-radius: 10px !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -13,7 +40,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h2 class="fw-bold mb-0 text-white">
-                    <i class="bi bi-people-fill" style="color: var(--shark-light-blue)"></i> Gestão de Clientes
+                    <i class="bi bi-people-fill glow-info" style="color: #0dcaf0"></i> Gestão de Clientes
                 </h2>
                 <p class="text-muted small">Administração de cadastros da Shark Eletrônicos | Brasília-DF</p>
             </div>
@@ -25,37 +52,37 @@
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
         </div>
 
-        <div class="card bg-dark border-secondary shadow-lg mb-5" style="border-radius: 15px; background: rgba(15, 23, 42, 0.6) !important;">
-            <div class="card-header border-secondary bg-transparent py-3">
+        <div class="card shark-card border-left-info shadow-lg mb-4" style="background: rgba(15, 23, 42, 0.6) !important;">
+            <div class="card-header border-0 bg-transparent pt-4 pb-0">
                 <h5 class="card-title mb-0 text-white">
-                    <i class="bi bi-person-plus me-2" style="color: var(--shark-light-blue)"></i>Dados do Cliente
+                    <i class="bi bi-person-plus me-2" style="color: #0dcaf0"></i>Dados do Cliente
                 </h5>
             </div>
             <div class="card-body p-4">
-                <form method="post" th:action="@{/clientes/salvar}" class="row g-4" id="formCliente">
+                <form method="post" th:action="@{/clientes/salvar}" class="row g-3" id="formCliente">
                     <input type="hidden" name="id" id="clienteId">
 
                     <div class="col-md-5">
-                        <label class="form-label text-info small fw-bold">NOME COMPLETO</label>
-                        <input name="nome" id="nome" class="form-control bg-black text-white border-secondary shadow-none p-3"
+                        <label class="form-label text-info small fw-bold mb-1">NOME COMPLETO (APENAS LETRAS)</label>
+                        <input name="nome" id="nome" class="form-control bg-black text-white border-secondary shadow-none p-2"
                                placeholder="Ex: João da Silva" required minlength="5">
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label text-info small fw-bold">CPF</label>
-                        <input name="cpf" id="cpf" class="form-control bg-black text-white border-secondary shadow-none p-3"
+                    <div class="col-md-3">
+                        <label class="form-label text-info small fw-bold mb-1">CPF (11 DÍGITOS)</label>
+                        <input name="cpf" id="cpf" class="form-control bg-black text-white border-secondary shadow-none p-2"
                                placeholder="000.000.000-00" maxlength="14" required>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label text-info small fw-bold">WHATSAPP</label>
-                        <input name="whatsapp" id="whatsapp" class="form-control bg-black text-white border-secondary shadow-none p-3"
-                               placeholder="(61) 99999-9999" maxlength="15" required>
+                    <div class="col-md-4">
+                        <label class="form-label text-info small fw-bold mb-1">WHATSAPP (11 DÍGITOS)</label>
+                        <div class="d-flex gap-2">
+                            <input name="whatsapp" id="whatsapp" class="form-control bg-black text-white border-secondary shadow-none p-2"
+                                   placeholder="(61) 99999-9999" maxlength="15" required>
+                            <button type="submit" class="btn btn-info fw-bold px-3">SALVAR</button>
+                        </div>
                     </div>
 
-                    <div class="col-12 shark-actions mt-4">
-                        <button type="submit" class="btn btn-success">
-                            <i class="bi bi-save me-2"></i> Salvar Cliente
-                        </button>
-                        <button type="button" class="btn btn-primary" onclick="limparFormulario()">
+                    <div class="col-12 mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="limparFormulario()">
                             <i class="bi bi-eraser me-2"></i> Limpar Campos
                         </button>
                     </div>
@@ -63,21 +90,21 @@
             </div>
         </div>
 
-        <div class="card bg-dark border-secondary shadow-sm overflow-hidden" style="border-radius: 15px;">
+        <div class="card bg-dark border-0 shadow-sm overflow-hidden mb-5" style="border-radius: 15px; border-left: 5px solid #0dcaf0 !important;">
             <div class="table-responsive">
                 <table class="table table-hover table-dark mb-0">
-                    <thead class="bg-black text-muted">
+                    <thead class="bg-black text-muted small text-uppercase">
                     <tr>
-                        <th class="ps-4">ID</th>
+                        <th class="ps-4 py-3">ID</th>
                         <th>NOME</th>
                         <th>CPF</th>
                         <th>CONTATO</th>
-                        <th class="text-center">AÇÕES</th>
+                        <th class="text-center pe-4">AÇÕES</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="c : ${clientes}" class="align-middle">
-                        <td class="ps-4 fw-bold text-info" th:text="${c.id}"></td>
+                        <td class="ps-4 fw-bold text-info" th:text="'#' + ${c.id}"></td>
                         <td class="fw-bold text-white" th:text="${c.nome}"></td>
                         <td th:text="${c.cpf}"></td>
                         <td>
@@ -86,16 +113,16 @@
                                 <i class="bi bi-whatsapp"></i> <span th:text="${c.whatsapp}"></span>
                             </a>
                         </td>
-                        <td class="text-center">
+                        <td class="text-center pe-4">
                             <div class="d-flex justify-content-center gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-info p-2"
-                                        th:onclick="|editarCliente('${c.id}', '${c.nome}', '${c.cpf}', '${c.whatsapp}')|">
+                                <button type="button" class="btn btn-sm btn-outline-info"
+                                        th:attr="onclick='editarCliente(\'' + ${c.id} + '\', \'' + ${c.nome} + '\', \'' + ${c.cpf} + '\', \'' + ${c.whatsapp} + '\')'">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
 
                                 <form th:action="@{/clientes/deletar/{id}(id=${c.id})}" method="post"
                                       sec:authorize="hasRole('ADMIN')" class="m-0">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger p-2"
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
                                             onclick="return confirm('Deseja remover este cliente permanentemente?')">
                                         <i class="bi bi-trash3"></i>
                                     </button>
@@ -104,7 +131,7 @@
                         </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(clientes)}">
-                        <td colspan="5" class="text-center py-5 text-muted">Nenhum cliente cadastrado.</td>
+                        <td colspan="5" class="text-center py-5 text-muted small">Nenhum cliente cadastrado.</td>
                     </tr>
                     </tbody>
                 </table>
@@ -113,14 +140,42 @@
     </div>
 
     <script th:inline="javascript">
-        // Função para carregar dados no formulário (agora com strings tratadas)
+        // VALIDAÇÃO DE ENVIO COMPLETA
+        document.getElementById("formCliente").addEventListener("submit", function(e) {
+            const nomeValue = document.getElementById("nome").value;
+            const cpfRaw = document.getElementById("cpf").value.replace(/\D/g, "");
+            const whatsappRaw = document.getElementById("whatsapp").value.replace(/\D/g, "");
+
+            // Bloqueia se houver números no nome
+            if (/\d/.test(nomeValue)) {
+                alert("O nome do cliente não pode conter números.");
+                e.preventDefault();
+                return false;
+            }
+
+            if (cpfRaw.length !== 11) {
+                alert("O CPF deve conter exatamente 11 dígitos.");
+                e.preventDefault();
+                return false;
+            }
+
+            if (whatsappRaw.length !== 11) {
+                alert("O WhatsApp deve conter o DDD + 9 dígitos.");
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // FILTRO EM TEMPO REAL PARA O NOME (REMOVE NÚMEROS ENQUANTO DIGITA)
+        document.getElementById("nome").addEventListener("input", function(e) {
+            this.value = this.value.replace(/[0-9]/g, "");
+        });
+
         function editarCliente(id, nome, cpf, whatsapp) {
             document.getElementById("clienteId").value = id;
             document.getElementById("nome").value = nome;
             document.getElementById("cpf").value = cpf;
             document.getElementById("whatsapp").value = whatsapp;
-
-            // Scroll suave para o topo para facilitar a edição
             window.scrollTo({ top: 0, behavior: 'smooth' });
             document.getElementById("nome").focus();
         }
@@ -130,7 +185,7 @@
             document.getElementById("clienteId").value = "";
         }
 
-        // --- MÁSCARAS AUTOMÁTICAS ---
+        // MÁSCARAS
         document.getElementById("cpf").addEventListener("input", function(e) {
             let v = e.target.value.replace(/\D/g, "");
             v = v.replace(/(\d{3})(\d)/, "$1.$2");
@@ -147,18 +202,6 @@
             e.target.value = v;
         });
     </script>
-
-    <style>
-        .btn-link-shark:hover {
-            color: var(--shark-light-blue) !important;
-            transform: scale(1.05);
-            display: inline-block;
-        }
-        /* Deixa os campos de input mais altos e modernos */
-        .form-control {
-            border-radius: 10px !important;
-        }
-    </style>
 </div>
 </body>
 </html>

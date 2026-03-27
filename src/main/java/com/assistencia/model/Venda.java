@@ -34,6 +34,10 @@ public class Venda {
         this.dataHora = LocalDateTime.now();
     }
 
+    /**
+     * Este método roda AUTOMATICAMENTE antes de salvar no banco.
+     * Ele garante que o lucro e o custo da Shark Eletrônicos sejam calculados corretamente.
+     */
     @PrePersist
     @PreUpdate
     public void validarDadosAntesDeSalvar() {
@@ -41,6 +45,7 @@ public class Venda {
             this.dataHora = LocalDateTime.now();
         }
 
+        // Garante que o vendedor não fique nulo para o relatório
         if (this.vendedor == null || this.vendedor.trim().isEmpty()) {
             this.vendedor = "Sistema Shark";
         }
@@ -50,21 +55,23 @@ public class Venda {
 
         if (itens != null && !itens.isEmpty()) {
             for (ItemVenda item : itens) {
-                // Essencial para o JPA não perder a referência
+                // Essencial: Vincula o item à venda pai para o JPA salvar os itens
                 item.setVenda(this);
 
                 int qtd = (item.getQuantidade() != null) ? item.getQuantidade() : 0;
 
-                // Preço de Venda (o que entra no caixa)
+                // Preço de Venda (Entrada no Caixa)
                 double precoVenda = (item.getPrecoUnitario() != null) ? item.getPrecoUnitario() : 0.0;
                 totalVendaCalculado += (precoVenda * qtd);
 
-                // Preço de Custo (o que saiu do seu bolso/estoque)
+                // Preço de Custo (Saída do Estoque/Bolso)
+                // Certifique-se que o objeto ItemVenda tenha o campo 'custoUnitario'
                 double precoCusto = (item.getCustoUnitario() != null) ? item.getCustoUnitario() : 0.0;
                 totalCustoCalculado += (precoCusto * qtd);
             }
         }
 
+        // Atualiza os campos que o Relatório Financeiro utiliza
         this.valorTotal = totalVendaCalculado;
         this.custoTotalEstoque = totalCustoCalculado;
     }

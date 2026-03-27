@@ -27,32 +27,36 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long
             "ORDER BY os.id DESC")
     List<OrdemServico> buscarSugestoesSugestivas(@Param("termo") String termo);
 
-    // --- 🚀 MÉTODOS CORRIGIDOS PARA O DASHBOARD ---
+    // --- 🚀 MÉTODOS PARA O DASHBOARD E RELATÓRIOS ---
 
-    // Conta OS criadas hoje (Data de abertura)
+    // Conta OS criadas (abertas) no período
     long countByDataBetween(LocalDateTime inicio, LocalDateTime fim);
 
-    // Conta OS entregues hoje (IMPORTANTE: Agora usa o campo 'dataEntrega')
+    // Conta OS entregues (Usa exatamente os nomes da Model: status e dataEntrega)
     long countByStatusAndDataEntregaBetween(String status, LocalDateTime inicio, LocalDateTime fim);
 
-    // Soma o Valor Bruto das OS entregues hoje
+    // Soma o Valor Bruto das OS entregues no período
     @Query("SELECT COALESCE(SUM(os.valorTotal), 0.0) FROM OrdemServico os " +
-            "WHERE os.status = :status " +
+            "WHERE LOWER(os.status) = LOWER(:status) " +
             "AND os.dataEntrega BETWEEN :inicio AND :fim")
     Double somarValorBrutoOsEntregues(@Param("status") String status,
                                       @Param("inicio") LocalDateTime inicio,
                                       @Param("fim") LocalDateTime fim);
 
-    // NOVO: Soma o Custo de Peças das OS entregues hoje
+    // Soma o Custo de Peças das OS entregues no período
     @Query("SELECT COALESCE(SUM(os.custoPeca), 0.0) FROM OrdemServico os " +
-            "WHERE os.status = :status " +
+            "WHERE LOWER(os.status) = LOWER(:status) " +
             "AND os.dataEntrega BETWEEN :inicio AND :fim")
     Double somarCustoPecasOsEntregues(@Param("status") String status,
                                       @Param("inicio") LocalDateTime inicio,
                                       @Param("fim") LocalDateTime fim);
 
-    // --- OUTRAS BUSCAS ---
-    List<OrdemServico> findByStatusAndDataEntregaBetweenOrderByIdDesc(String status, LocalDateTime inicio, LocalDateTime fim);
+    // --- MÉTODOS DE BUSCA PARA LISTAGEM (RELATÓRIO) ---
+
+    // Simplificado para evitar o erro "cannot find symbol"
+    List<OrdemServico> findByStatusAndDataEntregaBetween(String status, LocalDateTime inicio, LocalDateTime fim);
+
     List<OrdemServico> findByStatusOrderByIdDesc(String status);
+
     List<OrdemServico> findByClienteNomeContainingIgnoreCaseOrderByIdDesc(String nome);
 }

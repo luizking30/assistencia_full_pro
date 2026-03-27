@@ -1,9 +1,7 @@
 package com.assistencia.controller;
 
-import com.assistencia.model.Produto;
 import com.assistencia.model.Venda;
 import com.assistencia.model.OrdemServico;
-import com.assistencia.repository.ProdutoRepository;
 import com.assistencia.repository.VendaRepository;
 import com.assistencia.repository.OrdemServicoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +15,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.ArrayList;
 
 @Controller
 public class RelatorioController {
-
-    @Autowired
-    private ProdutoRepository produtoRepository;
 
     @Autowired
     private VendaRepository vendaRepository;
@@ -36,56 +32,58 @@ public class RelatorioController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
             Model model) {
 
-        List<Produto> produtos = produtoRepository.findAll();
-        List<Venda> vendas;
-        List<OrdemServico> servicos;
+        List<Venda> vendas = new ArrayList<>();
+        List<OrdemServico> servicos = new ArrayList<>();
 
-        // 1. Lógica de Filtro por Data com Ordenação Recente
+        // Inicializamos os totais com 0.0 para evitar erros de exibição no HTML
+        double totalVendasBruto = 0.0;
+        double custoEstoqueVendido = 0.0;
+        double totalServicosBruto = 0.0;
+        double custoPecasOS = 0.0;
+
         if (inicio != null && fim != null) {
             LocalDateTime dataInicial = inicio.atStartOfDay();
             LocalDateTime dataFinal = fim.atTime(LocalTime.MAX);
 
-            // Ajuste: Busca vendas no período (Certifique-se que seu VendaRepository tenha esse método ordenado)
+            // 1. Busca no Banco
             vendas = vendaRepository.findByDataHoraBetween(dataInicial, dataFinal);
+            servicos = osRepository.findByStatusAndDataEntregaBetween("Entregue", dataInicial, dataFinal);
 
-            // Ajuste: Busca serviços entregues usando o novo método ordenado do Repository
-            servicos = osRepository.findByStatusAndDataEntregaBetweenOrderByIdDesc("Entregue", dataInicial, dataFinal);
-        } else {
-            // Ajuste: Busca tudo usando a ordenação padrão definida no Repository
-            vendas = vendaRepository.findAll();
-            servicos = osRepository.findByStatusOrderByIdDesc("Entregue");
+            // 2. Cálculos de Vendas (Produtos)
+            totalVendasBruto = vendas.stream()
+                    .mapToDouble(v -> v.getValorTotal() != null ? v.getValorTotal() : 0.0).sum();
+
+            custoEstoqueVendido = vendas.stream()
+                    .mapToDouble(v -> v.getCustoTotalEstoque() != null ? v.getCustoTotalEstoque() : 0.0).sum();
+
+            // 3. Cálculos de Serviços (OS)
+            totalServicosBruto = servicos.stream()
+                    .mapToDouble(s -> s.getValorTotal() != null ? s.getValorTotal() : 0.0).sum();
+
+            custoPecasOS = servicos.stream()
+                    .mapToDouble(s -> s.getCustoPeca() != null ? s.getCustoPeca() : 0.0).sum();
         }
 
-        // 2. Cálculo de Estoque (Custo Total parado na loja)
-        double totalInvestido = produtos.stream()
-                .filter(p -> p.getPrecoCusto() != null && p.getQuantidade() != null)
-                .mapToDouble(p -> p.getPrecoCusto() * p.getQuantidade())
-                .sum();
+        // 4. Totais Gerais e Lucros (Calculados fora do IF para evitar erros no Model)
+        double lucroVendas = totalVendasBruto - custoEstoqueVendido;
+        double lucroServicos = totalServicosBruto - custoPecasOS;
+        double lucroTotalPeriodo = lucroVendas + lucroServicos;
 
-        // 3. Faturamento de Vendas (Produtos)
-        double totalVendasValor = vendas.stream()
-                .mapToDouble(v -> v.getValorTotal() != null ? v.getValorTotal() : 0.0)
-                .sum();
+        // Atributos para os Cards do Thymeleaf
+        model.addAttribute("totalVendasBruto", totalVendasBruto);
+        model.addAttribute("custoEstoqueVendido", custoEstoqueVendido);
+        model.addAttribute("lucroVendas", lucroVendas);
 
-        // 4. Faturamento de Serviços (Mão de obra)
-        double totalServicosValor = servicos.stream()
-                .mapToDouble(s -> s.getValorTotal() != null ? s.getValorTotal() : 0.0)
-                .sum();
+        model.addAttribute("totalServicosBruto", totalServicosBruto);
+        model.addAttribute("custoPecasOS", custoPecasOS);
+        model.addAttribute("lucroServicos", lucroServicos);
 
-        // Faturamento Bruto (Soma de tudo que entrou)
-        double faturamentoBruto = totalVendasValor + totalServicosValor;
+        // Atributo principal do Resultado Total (Linha 163 do seu HTML)
+        model.addAttribute("lucroTotalPeriodo", lucroTotalPeriodo);
 
-        // Balanço Líquido (Faturamento - Custo de Aquisição do Estoque)
-        double lucroLiquido = faturamentoBruto - totalInvestido;
-
-        // Enviando dados para o Thymeleaf
+        // Listas e Datas para a tabela e o formulário
         model.addAttribute("vendas", vendas);
         model.addAttribute("servicos", servicos);
-        model.addAttribute("totalInvestido", totalInvestido);
-        model.addAttribute("totalVendido", faturamentoBruto);
-        model.addAttribute("lucroLiquido", lucroLiquido);
-
-        // Mantém as datas nos campos de filtro da página
         model.addAttribute("inicio", inicio);
         model.addAttribute("fim", fim);
 

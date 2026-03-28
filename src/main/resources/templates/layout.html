@@ -167,8 +167,11 @@
 
       <div class="d-flex align-items-center gap-3">
         <div class="text-end d-none d-lg-block" sec:authorize="isAuthenticated()">
-          <small class="text-white d-block" style="font-size: 0.7rem;">Operador</small>
-          <span class="text-white fw-bold" sec:authentication="name">Usuário</span>
+          <small class="d-block text-uppercase fw-bold" style="font-size: 0.65rem; color: var(--shark-light-blue); letter-spacing: 1px;">
+            <span sec:authentication="principal.authorities">ROLE</span>
+          </small>
+          <span style="color: #94a3b8; font-weight: 500; font-size: 0.8rem;">Bem-vindo,</span>
+          <span class="text-white fw-bold" style="text-shadow: 0 0 5px rgba(0, 212, 255, 0.4);" sec:authentication="name">Usuário</span>
         </div>
 
         <form th:action="@{/logout}" method="post" id="logoutForm" class="m-0">

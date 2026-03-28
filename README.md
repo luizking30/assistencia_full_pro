@@ -18,7 +18,15 @@ O projeto segue os padrões da arquitetura **MVC** e **Clean Code**, organizado 
 * **`service`**: Camada de regras de negócio, garantindo a separação de responsabilidades.
 * **`security`**: Implementação de autenticação e autorização (Login/Logout), protegendo rotas administrativas.
 * **`config`**: Configurações de ambiente, Beans e segurança da aplicação.
+  
+## 🔐 Segurança e Autenticação
+O sistema conta com uma camada robusta de segurança utilizando Spring Security, focada em proteção de dados e controle de acesso:
 
+Criptografia de Senhas: Utilização do algoritmo BCrypt com Salting aleatório. As senhas nunca são armazenadas em texto plano no MySQL, garantindo que, mesmo em caso de vazamento do banco, os dados permaneçam ilegíveis.
+
+Controle de Acesso (RBAC): Diferenciação de permissões entre ADMIN (acesso total e gestão de funcionários) e FUNCIONARIO (operação do dia a dia).
+
+Fila de Aprovação: Novos cadastros iniciam com o status aprovado = 0 (Falso). O acesso ao sistema só é liberado após a ativação manual, impedindo acessos não autorizados por usuários externos.
 ## 🖥️ Módulos da Interface (Frontend)
 
 Desenvolvido com **Thymeleaf** e **Bootstrap**, o sistema conta com as seguintes telas:
@@ -42,6 +50,10 @@ Desenvolvido com **Thymeleaf** e **Bootstrap**, o sistema conta com as seguintes
 2.  Execute `mvn clean install`.
 3.  Inicie com `mvn spring-boot:run`.
 4.  Acesse `localhost:8080`.
+5.  crie seu login.
+6.  Ativação Manual: Como o sistema inicia com usuários bloqueados, acesse seu terminal MySQL ou Workbench e rode:
+UPDATE usuarios SET aprovado = 1, role = 'ROLE_ADMIN' WHERE username = 'NomeDoUsuario';
+7.  - Login: Agora você pode acessar o sistema com todas as funções liberadas.
 
 ---
 ## 👨‍💻 Luiz Eduardo Mendonça Amorim

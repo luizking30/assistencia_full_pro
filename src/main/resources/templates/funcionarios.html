@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+  <title>Gestão de Equipe - Shark Eletrônicos</title>
+  <style>
+    .shark-card-admin {
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 15px;
+      border-left: 5px solid var(--shark-light-blue);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .status-badge {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .status-pendente { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107; }
+    .status-ativo { background: rgba(0, 200, 83, 0.2); color: #00c853; border: 1px solid #00c853; }
+
+    .table-admin thead {
+      background-color: var(--shark-black);
+      color: var(--shark-light-blue);
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+
+<body>
+<div layout:fragment="conteudo">
+  <div class="mt-2">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="fw-bold mb-0 text-white">
+          <i class="bi bi-shield-lock-fill me-2" style="color: var(--shark-light-blue)"></i> Gestão de Equipe
+        </h2>
+        <p class="text-white-50 small">Aprovação e controle de acessos | Shark Eletrônicos</p>
+      </div>
+      <div class="text-end">
+                <span class="badge bg-primary px-3 py-2" style="border: 1px solid var(--shark-light-blue)">
+                    <i class="bi bi-people-fill me-2"></i> <span th:text="${usuarios.size()}">0</span> Cadastrados
+                </span>
+      </div>
+    </div>
+
+    <div th:if="${mensagem}" class="alert alert-success bg-dark text-success border-success shadow-lg mb-4">
+      <i class="bi bi-check-circle-fill me-2"></i> <span th:text="${mensagem}"></span>
+    </div>
+
+    <div class="card shark-card-admin overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover table-dark align-middle mb-0 table-admin">
+          <thead>
+          <tr>
+            <th class="ps-4 py-3">ID</th>
+            <th>NOME COMPLETO</th>
+            <th>USUÁRIO (LOGIN)</th>
+            <th>STATUS</th>
+            <th class="text-center pe-4">AÇÕES</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:each="u : ${usuarios}">
+            <td class="ps-4 text-info fw-bold" th:text="'#' + ${u.id}"></td>
+            <td>
+              <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-secondary d-flex justify-content-center align-items-center me-3"
+                     style="width: 35px; height: 35px; background: linear-gradient(45deg, var(--shark-blue), var(--shark-light-blue)) !important;">
+                  <i class="bi bi-person text-white"></i>
+                </div>
+                <span class="fw-bold text-white" th:text="${u.nome}">Nome</span>
+              </div>
+            </td>
+            <td th:text="${u.username}" class="text-white-50">usuario.login</td>
+            <td>
+                                <span th:if="${!u.aprovado}" class="status-badge status-pendente">
+                                    <i class="bi bi-hourglass-split me-1"></i> Aguardando
+                                </span>
+              <span th:if="${u.aprovado}" class="status-badge status-ativo">
+                                    <i class="bi bi-check-lg me-1"></i> Ativo
+                                </span>
+            </td>
+            <td class="text-center pe-4">
+              <div class="d-flex justify-content-center gap-2">
+
+                <form th:if="${!u.aprovado}" th:action="@{/funcionarios/aprovar/{id}(id=${u.id})}" method="post" class="m-0">
+                  <button type="submit" class="btn btn-sm btn-success">
+                    <i class="bi bi-person-check-fill me-1"></i> Aprovar
+                  </button>
+                </form>
+
+                <form th:action="@{/funcionarios/deletar/{id}(id=${u.id})}" method="post" class="m-0"
+                      onsubmit="return confirm('Tem certeza que deseja remover este acesso?')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+
+              </div>
+            </td>
+          </tr>
+
+          <tr th:if="${#lists.isEmpty(usuarios)}">
+            <td colspan="5" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+              Nenhum funcionário cadastrado no sistema.
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <a th:href="@{/dashboard}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-2"></i> Voltar ao Dashboard
+      </a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

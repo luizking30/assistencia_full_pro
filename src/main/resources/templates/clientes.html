@@ -19,17 +19,19 @@
             filter: brightness(1.2);
         }
         .border-left-info { border-left-color: #0dcaf0 !important; }
-        .border-left-success { border-left-color: #198754 !important; }
-
         .glow-info { filter: drop-shadow(0 0 5px #0dcaf0); }
-
         .btn-link-shark:hover {
             color: #0dcaf0 !important;
             transform: scale(1.05);
             display: inline-block;
         }
-        .form-control {
-            border-radius: 10px !important;
+        .form-control { border-radius: 10px !important; }
+
+        /* Estilo para botão visualmente desabilitado mas visível */
+        .btn-readonly {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+            filter: grayscale(1);
         }
     </style>
 </head>
@@ -42,8 +44,12 @@
                 <h2 class="fw-bold mb-0 text-white">
                     <i class="bi bi-people-fill glow-info" style="color: #0dcaf0"></i> Gestão de Clientes
                 </h2>
-                <p class="text-muted small">Administração de cadastros da Shark Eletrônicos | Brasília-DF</p>
+                <p class="text-white-50 small">Administração de cadastros da Shark Eletrônicos | Brasília-DF</p>
             </div>
+        </div>
+
+        <div th:if="${param.error}" class="alert alert-danger bg-dark text-danger border-danger shadow-lg">
+            <i class="bi bi-shield-lock-fill me-2"></i> Acesso negado: Somente administradores podem realizar esta ação.
         </div>
 
         <div th:if="${mensagemErro}" class="alert alert-warning alert-dismissible fade show bg-dark text-warning border-warning shadow-lg" role="alert">
@@ -77,6 +83,7 @@
                         <div class="d-flex gap-2">
                             <input name="whatsapp" id="whatsapp" class="form-control bg-black text-white border-secondary shadow-none p-2"
                                    placeholder="(61) 99999-9999" maxlength="15" required>
+
                             <button type="submit" class="btn btn-info fw-bold px-3">SALVAR</button>
                         </div>
                     </div>
@@ -115,15 +122,18 @@
                         </td>
                         <td class="text-center pe-4">
                             <div class="d-flex justify-content-center gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-info"
-                                        th:attr="onclick='editarCliente(\'' + ${c.id} + '\', \'' + ${c.nome} + '\', \'' + ${c.cpf} + '\', \'' + ${c.whatsapp} + '\')'">
+                                <button type="button" class="btn btn-sm btn-outline-info btn-editar"
+                                        th:classappend="${#authorization.expression('hasRole(''ADMIN'')')} ? '' : 'btn-readonly'"
+                                        th:data-id="${c.id}"
+                                        th:data-nome="${c.nome}"
+                                        th:data-cpf="${c.cpf}"
+                                        th:data-whatsapp="${c.whatsapp}">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
 
-                                <form th:action="@{/clientes/deletar/{id}(id=${c.id})}" method="post"
-                                      sec:authorize="hasRole('ADMIN')" class="m-0">
+                                <form th:action="@{/clientes/deletar/{id}(id=${c.id})}" method="post" class="m-0 form-deletar">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
-                                            onclick="return confirm('Deseja remover este cliente permanentemente?')">
+                                            th:classappend="${#authorization.expression('hasRole(''ADMIN'')')} ? '' : 'btn-readonly'">
                                         <i class="bi bi-trash3"></i>
                                     </button>
                                 </form>
@@ -140,25 +150,62 @@
     </div>
 
     <script th:inline="javascript">
-        // VALIDAÇÃO DE ENVIO COMPLETA
+        const isAdmin = [[${#authorization.expression('hasRole("ADMIN")')}]];
+
+        document.querySelectorAll('.btn-editar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!isAdmin) {
+                    alert("Ação restrita: Somente administradores podem editar clientes.");
+                    return;
+                }
+                const id = this.getAttribute('data-id');
+                const nome = this.getAttribute('data-nome');
+                const cpf = this.getAttribute('data-cpf');
+                const whatsapp = this.getAttribute('data-whatsapp');
+                document.getElementById("clienteId").value = id;
+                document.getElementById("nome").value = nome;
+                document.getElementById("cpf").value = cpf;
+                document.getElementById("whatsapp").value = whatsapp;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                document.getElementById("nome").focus();
+            });
+        });
+
+        document.querySelectorAll('.form-deletar').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                if (!isAdmin) {
+                    e.preventDefault();
+                    alert("Ação restrita: Somente administradores podem deletar clientes.");
+                    return false;
+                }
+                return confirm('Deseja remover este cliente permanentemente?');
+            });
+        });
+
         document.getElementById("formCliente").addEventListener("submit", function(e) {
+            const idValue = document.getElementById("clienteId").value;
+
+            // Trava para impedir edição se não for admin (ID preenchido = edição)
+            if (idValue !== "" && !isAdmin) {
+                alert("Ação restrita: Você pode cadastrar novos clientes, mas não editar os existentes.");
+                e.preventDefault();
+                return false;
+            }
+
             const nomeValue = document.getElementById("nome").value;
             const cpfRaw = document.getElementById("cpf").value.replace(/\D/g, "");
             const whatsappRaw = document.getElementById("whatsapp").value.replace(/\D/g, "");
 
-            // Bloqueia se houver números no nome
             if (/\d/.test(nomeValue)) {
                 alert("O nome do cliente não pode conter números.");
                 e.preventDefault();
                 return false;
             }
-
             if (cpfRaw.length !== 11) {
                 alert("O CPF deve conter exatamente 11 dígitos.");
                 e.preventDefault();
                 return false;
             }
-
             if (whatsappRaw.length !== 11) {
                 alert("O WhatsApp deve conter o DDD + 9 dígitos.");
                 e.preventDefault();
@@ -166,26 +213,15 @@
             }
         });
 
-        // FILTRO EM TEMPO REAL PARA O NOME (REMOVE NÚMEROS ENQUANTO DIGITA)
         document.getElementById("nome").addEventListener("input", function(e) {
             this.value = this.value.replace(/[0-9]/g, "");
         });
-
-        function editarCliente(id, nome, cpf, whatsapp) {
-            document.getElementById("clienteId").value = id;
-            document.getElementById("nome").value = nome;
-            document.getElementById("cpf").value = cpf;
-            document.getElementById("whatsapp").value = whatsapp;
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            document.getElementById("nome").focus();
-        }
 
         function limparFormulario() {
             document.getElementById("formCliente").reset();
             document.getElementById("clienteId").value = "";
         }
 
-        // MÁSCARAS
         document.getElementById("cpf").addEventListener("input", function(e) {
             let v = e.target.value.replace(/\D/g, "");
             v = v.replace(/(\d{3})(\d)/, "$1.$2");

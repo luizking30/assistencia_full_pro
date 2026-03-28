@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout}">
 <head>
@@ -57,6 +58,13 @@
             box-shadow: 0 0 10px rgba(13, 202, 240, 0.3) !important;
             border-color: #0dcaf0 !important;
         }
+
+        /* Estilo para ação restrita */
+        .btn-readonly {
+            opacity: 0.4;
+            cursor: not-allowed !important;
+            filter: grayscale(1);
+        }
     </style>
 </head>
 <body>
@@ -67,7 +75,7 @@
                 <h2 class="fw-bold mb-0 text-white">
                     <i class="bi bi-cart-plus glow-info" style="color: #0dcaf0"></i> PDV Shark Eletrônicos
                 </h2>
-                <p class="text-muted small">Venda rápida com baixa automática de estoque | Brasília-DF</p>
+                <p class="text-white-50 small">Venda rápida com baixa automática de estoque | Brasília-DF</p>
             </div>
             <div class="text-end">
                 <span class="badge bg-black border border-info text-info px-3 py-2 shadow-sm" style="font-size: 0.9rem;">
@@ -102,18 +110,18 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label text-info small fw-bold text-uppercase">PREÇO (R$)</label>
-                            <input type="number" id="precoBusca" step="0.01" class="form-control bg-black text-white border-secondary shadow-none p-3" readonly>
+                            <input type="number" id="precoBusca" step="0.01" class="form-control bg-black text-white border-secondary shadow-none p-3">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label text-warning small fw-bold text-uppercase">DESCONTO (%)</label>
-                            <input type="number" id="descontoBusca" class="form-control bg-black text-warning border-warning shadow-none p-3" value="0" min="0" max="100">
+                            <label class="form-label text-info small fw-bold text-uppercase">DESCONTO (%)</label>
+                            <input type="number" id="descontoBusca" step="0.01" class="form-control bg-black text-white border-seconday border-secondary shadow-none p-3">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label text-info small fw-bold text-uppercase">QUANTIDADE</label>
                             <input type="number" id="qtdBusca" class="form-control bg-black text-white border-secondary shadow-none p-3" value="1" min="1">
                         </div>
                         <div class="col-md-2">
-                            <button type="button" onclick="adicionarItem()" class="btn btn-info fw-bold w-100 p-3 shadow-sm text-uppercase">
+                            <button type="button" id="btnIncluir" onclick="adicionarItem()" class="btn btn-info fw-bold w-100 p-3 shadow-sm text-uppercase">
                                 <i class="bi bi-plus-circle me-2"></i>Incluir
                             </button>
                         </div>
@@ -151,7 +159,7 @@
 
         <div class="mb-3 d-flex justify-content-between align-items-center">
             <h4 class="fw-bold text-white mb-0">
-                <i class="bi bi-lightning-charge-fill text-warning glow-warning me-2"></i> Resumo de Vendas
+                <i class="bi bi-lightning-charge-fill text-warning glow-warning me-2"></i> Resumo de Vendas do Dia
             </h4>
             <div class="text-end">
                 <span class="h4 fw-bold text-success ms-2"
@@ -206,16 +214,21 @@
                                 <a th:href="@{'/vendas/pdf/' + ${v.id}}" target="_blank" class="btn btn-sm btn-outline-info p-2">
                                     <i class="bi bi-printer"></i>
                                 </a>
-                                <form th:action="@{/vendas/deletar/{id}(id=${v.id})}" method="post" onsubmit="return confirm('Estornar venda?')" class="m-0">
+
+                                <form sec:authorize="hasRole('ADMIN')" th:action="@{/vendas/deletar/{id}(id=${v.id})}" method="post" onsubmit="return confirm('Estornar esta venda da Shark? O estoque será devolvido.')" class="m-0">
                                     <button type="submit" class="btn btn-sm btn-outline-danger p-2">
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                     </button>
                                 </form>
+
+                                <button sec:authorize="!hasRole('ADMIN')" type="button" class="btn btn-sm btn-outline-secondary p-2 btn-readonly" title="Estorno restrito ao Administrador">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(vendas)}">
-                        <td colspan="5" class="text-center py-5 text-muted small">Nenhuma venda registrada hoje.</td>
+                        <td colspan="5" class="text-center py-5 text-muted small">Nenhuma venda registrada hoje na Shark Eletrônicos.</td>
                     </tr>
                     </tbody>
                 </table>
@@ -226,6 +239,9 @@
 
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
+        // Variável de controle de permissão vinda do Spring Security
+        const isAdmin = [[${#authorization.expression('hasRole("ADMIN")')}]];
+
         let itensVenda = [];
         const campoBusca = document.getElementById('campoBusca');
         const sugestoesBox = document.getElementById('sugestoesProdutos');
@@ -240,25 +256,46 @@
         }
         setInterval(atualizarRelogio, 1000);
 
+        // BUSCA HÍBRIDA (NOME OU ID)
         campoBusca.addEventListener('input', function() {
-            const termo = this.value;
-            if (termo.length < 2) { sugestoesBox.style.display = 'none'; return; }
+            const termo = this.value.trim();
+            if (termo.length === 0) { sugestoesBox.style.display = 'none'; return; }
+
+            if (/^\d+$/.test(termo)) {
+                fetch('/estoque/buscar/' + termo)
+                    .then(res => res.ok ? res.json() : Promise.reject())
+                    .then(p => renderizarSugestoes([p], true))
+                    .catch(() => buscarPorNome(termo));
+            } else if (termo.length >= 2) {
+                buscarPorNome(termo);
+            }
+        });
+
+        function buscarPorNome(termo) {
             fetch('/estoque/sugestoes?termo=' + encodeURIComponent(termo))
                 .then(res => res.json())
-                .then(produtos => {
-                    sugestoesBox.innerHTML = '';
-                    if (produtos.length > 0) {
-                        produtos.forEach(p => {
-                            const item = document.createElement('div');
-                            item.className = 'list-group-item list-group-item-action bg-dark text-white suggestion-item';
-                            item.innerHTML = `<div class="d-flex justify-content-between align-items-center"><span>#${p.id} ${p.nome}</span><span class="badge bg-success">R$ ${p.precoVenda.toFixed(2)}</span></div>`;
-                            item.onclick = () => selecionarProduto(p);
-                            sugestoesBox.appendChild(item);
-                        });
-                        sugestoesBox.style.display = 'block';
-                    } else { sugestoesBox.style.display = 'none'; }
+                .then(produtos => renderizarSugestoes(produtos, false));
+        }
+
+        function renderizarSugestoes(produtos, porId) {
+            sugestoesBox.innerHTML = '';
+            if (produtos.length > 0) {
+                produtos.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'list-group-item list-group-item-action bg-dark text-white suggestion-item';
+                    item.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>#${p.id} ${p.nome}</span>
+                            <span class="badge bg-success">R$ ${p.precoVenda.toFixed(2)}</span>
+                        </div>`;
+                    item.onclick = () => selecionarProduto(p);
+                    sugestoesBox.appendChild(item);
                 });
-        });
+                sugestoesBox.style.display = 'block';
+            } else {
+                sugestoesBox.style.display = 'none';
+            }
+        }
 
         function selecionarProduto(p) {
             document.getElementById('produtoIdReal').value = p.id;
@@ -318,8 +355,7 @@
                         </td>
                     </tr>`;
             });
-            const totalTexto = document.getElementById('totalVenda');
-            totalTexto.innerText = `R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            document.getElementById('totalVenda').innerText = `R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             document.getElementById('inputTotalVenda').value = totalGeral.toFixed(2);
         }
 
@@ -335,8 +371,16 @@
             campoBusca.focus();
         }
 
+        // ATALHOS DE TECLADO
         document.addEventListener('keydown', function(e) {
-            if (e.key === "F2") { e.preventDefault(); if(itensVenda.length > 0) formVenda.submit(); }
+            if (e.key === "F2") {
+                e.preventDefault();
+                if(itensVenda.length > 0) formVenda.submit();
+            }
+            if (e.key === "Enter" && (document.activeElement === qtdInput || document.activeElement === descontoInput)) {
+                e.preventDefault();
+                adicionarItem();
+            }
         });
     </script>
 </th:block>

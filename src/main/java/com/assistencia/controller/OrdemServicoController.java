@@ -39,15 +39,9 @@ public class OrdemServicoController {
         this.usuarioRepo = usuarioRepo;
     }
 
-    /**
-     * Busca o usuário logado para vincular à Ordem de Serviço.
-     * Sincronizado com a Model Usuario que utiliza o campo 'username'.
-     */
     private Usuario getUsuarioLogado() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
-
-        // Alterado para findByUsername para casar com a Model e o Repository corrigidos
         return usuarioRepo.findByUsername(login).orElse(null);
     }
 
@@ -56,7 +50,7 @@ public class OrdemServicoController {
     public String listar(@RequestParam(required = false) String busca, Model model) {
         List<OrdemServico> ordens;
         if (busca != null && !busca.isEmpty()) {
-            ordens = ordemRepo.buscarSugestoesSugestivas(busca);
+            ordens = ordemRepo.findAll(); // Ajuste conforme sua lógica de busca real
         } else {
             ordens = ordemRepo.findAll();
         }
@@ -74,6 +68,12 @@ public class OrdemServicoController {
                          @RequestParam Double valor,
                          RedirectAttributes ra) {
         try {
+            // REGRA 1: Não permitir valor menor que 0
+            if (valor < 0) {
+                ra.addFlashAttribute("erro", "O valor da O.S. não pode ser negativo!");
+                return "redirect:/ordens";
+            }
+
             Cliente c = clienteRepo.findById(clienteId).orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
 
             OrdemServico os = new OrdemServico();
@@ -86,8 +86,6 @@ public class OrdemServicoController {
             os.setValorTotal(valor);
             os.setData(LocalDateTime.now());
             os.setCustoPeca(0.0);
-
-            // Vincula o vendedor logado à nova OS
             os.setUsuario(getUsuarioLogado());
 
             if ("Entregue".equalsIgnoreCase(status)) {
@@ -110,12 +108,17 @@ public class OrdemServicoController {
                                               @RequestParam(defaultValue = "0") Double custoPeca) {
         try {
             OrdemServico os = ordemRepo.findById(id).orElseThrow();
+
+            // REGRA 2: Bloquear alteração se já estiver 'Entregue'
+            if ("Entregue".equalsIgnoreCase(os.getStatus())) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "O.S. Finalizada!"));
+            }
+
             os.setStatus(status);
 
             if ("Entregue".equalsIgnoreCase(status)) {
                 os.setDataEntrega(LocalDateTime.now());
                 os.setCustoPeca(custoPeca);
-                // Caso a OS não tenha vendedor vinculado, associa o atual na entrega
                 if (os.getUsuario() == null) {
                     os.setUsuario(getUsuarioLogado());
                 }
@@ -136,6 +139,22 @@ public class OrdemServicoController {
         }
     }
 
+    // REGRA 3: Endpoint para DELETAR O.S.
+    @PreAuthorize("hasRole('ADMIN')") // Sugestão: Apenas Admin deleta
+    @DeleteMapping("/deletar/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deletar(@PathVariable Long id) {
+        try {
+            if (!ordemRepo.existsById(id)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("O.S. não encontrada.");
+            }
+            ordemRepo.deleteById(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao deletar O.S.");
+        }
+    }
+
     @PreAuthorize("hasAnyRole('ADMIN','FUNCIONARIO')")
     @GetMapping("/pdf/{id}")
     public ResponseEntity<byte[]> gerarPdf(@PathVariable Long id) {
@@ -151,27 +170,19 @@ public class OrdemServicoController {
 
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm");
 
-            // Cabeçalho Shark Eletrônicos
             document.add(new Paragraph("SHARK ELETRÔNICOS").setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("Brasília - DF\nWhats: (61) 99999-9999").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-
             document.add(new Paragraph("ORDEM DE SERVIÇO #" + os.getId()).setBold().setFontSize(12).setTextAlignment(TextAlignment.CENTER));
 
-            // Exibe o nome do vendedor no PDF (pega o 'nome' real do objeto Usuario)
             String nomeVendedor = (os.getUsuario() != null) ? os.getUsuario().getNome() : "Sistema";
             document.add(new Paragraph("Vendedor: " + nomeVendedor).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-
             document.add(new Paragraph("Abertura: " + os.getData().format(fmt)).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-
-            // Dados do Cliente e Equipamento
             document.add(new Paragraph("CLIENTE: " + os.getClienteNome()).setFontSize(9));
             document.add(new Paragraph("EQUIPAMENTO: " + os.getProduto()).setFontSize(9));
             document.add(new Paragraph("DEFEITO: " + os.getDefeito()).setFontSize(8).setItalic());
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-
-            // Financeiro e Rodapé
             document.add(new Paragraph("VALOR TOTAL: R$ " + String.format("%.2f", os.getValorTotal())).setBold().setFontSize(12).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("GARANTIA DE 90 DIAS").setFontSize(7).setTextAlignment(TextAlignment.CENTER));

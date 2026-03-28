@@ -69,6 +69,12 @@
             font-weight: bold;
             margin-top: 2px;
         }
+        .lucro-liquido-label {
+            display: block;
+            font-size: 0.75rem;
+            color: #0dcaf0;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -81,7 +87,7 @@
                 <h2 class="fw-bold mb-0 text-white">
                     <i class="bi bi-tools glow-info" style="color: #0dcaf0"></i> Ordens de Serviço
                 </h2>
-                <p class="text-muted small">Gerenciamento Shark Eletrônicos | Brasília-DF</p>
+                <p class="text-white-50 small">Gerenciamento Shark Eletrônicos | Brasília-DF</p>
             </div>
         </div>
 
@@ -114,7 +120,7 @@
 
                     <div class="col-md-2">
                         <label class="form-label text-info small fw-bold text-uppercase">Valor (R$)</label>
-                        <input type="number" step="0.01" name="valor" class="form-control bg-black text-white border-secondary shadow-none p-3" placeholder="0.00" required>
+                        <input type="number" step="0.01" min="0" name="valor" class="form-control bg-black text-white border-secondary shadow-none p-3" placeholder="0.00" required>
                     </div>
 
                     <div class="col-md-2 d-flex align-items-end">
@@ -194,12 +200,15 @@
                             <span class="fw-bold text-success valor-total-exibido" th:text="${o.valorTotal != null ? 'R$ ' + #numbers.formatDecimal(o.valorTotal, 1, 'POINT', 2, 'COMMA') : 'R$ 0,00'}"></span>
                             <span class="gasto-pecas-label" th:id="'gasto-pecas-' + ${o.id}"
                                   th:text="${(o.custoPeca != null && o.custoPeca > 0) ? '- R$ ' + #numbers.formatDecimal(o.custoPeca, 1, 'POINT', 2, 'COMMA') + ' gasto de peças' : ''}"></span>
+                            <span class="lucro-liquido-label" th:id="'lucro-liquido-' + ${o.id}"
+                                  th:text="${(o.custoPeca != null && o.custoPeca > 0) ? '= R$ ' + #numbers.formatDecimal(o.valorTotal - o.custoPeca, 1, 'POINT', 2, 'COMMA') + ' lucro líquido' : ''}"></span>
                         </td>
                         <td>
                             <span class="badge mb-1 d-block status-badge-text" th:id="'badge-' + ${o.id}" th:text="${o.status}"
                                   th:classappend="${o.status == 'Em análise' ? 'bg-warning text-dark' : (o.status == 'Em andamento' ? 'bg-primary' : (o.status == 'Pronto' ? 'bg-info text-dark' : 'bg-success'))}">
                             </span>
-                            <select class="form-select form-select-sm status-select-ajax shadow-none" th:attr="data-id=${o.id}">
+                            <select class="form-select form-select-sm status-select-ajax shadow-none"
+                                    th:attr="data-id=${o.id}, data-status-atual=${o.status}">
                                 <option value="Em análise" th:selected="${o.status == 'Em análise'}">Em análise</option>
                                 <option value="Em andamento" th:selected="${o.status == 'Em andamento'}">Em andamento</option>
                                 <option value="Pronto" th:selected="${o.status == 'Pronto'}">Pronto</option>
@@ -207,9 +216,17 @@
                             </select>
                         </td>
                         <td class="text-center">
-                            <a class="btn btn-sm btn-outline-info p-2" th:href="@{/ordens/pdf/{id}(id=${o.id})}" target="_blank">
-                                <i class="bi bi-file-earmark-pdf"></i> PDF
-                            </a>
+                            <div class="btn-group">
+                                <a class="btn btn-sm btn-outline-info p-2" th:href="@{/ordens/pdf/{id}(id=${o.id})}" target="_blank">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                                <button sec:authorize="hasRole('ADMIN')" class="btn btn-sm btn-outline-danger p-2 btn-deletar" th:attr="data-id=${o.id}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <button sec:authorize="!hasRole('ADMIN')" class="btn btn-sm btn-outline-secondary p-2" disabled title="Ação restrita ao Admin">
+                                    <i class="bi bi-lock"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     </tbody>
@@ -219,10 +236,14 @@
     </div>
 
     <script th:inline="javascript">
+        // Variável de controle vinda do servidor
+        const isAdmin = [[${#authorization.expression('hasRole("ADMIN")')}]];
+
         document.addEventListener('DOMContentLoaded', function() {
             const token = document.querySelector('meta[name="_csrf"]')?.content;
             const header = document.querySelector('meta[name="_csrf_header"]')?.content;
 
+            // --- AUTOCOMPLETE CLIENTE ---
             const inputCli = document.getElementById('inputClienteForm');
             const hiddenCliId = document.getElementById('clienteIdHidden');
             const boxCli = document.getElementById('box-sugestoes-cliente');
@@ -252,18 +273,25 @@
                     });
             });
 
+            // --- MUDANÇA DE STATUS (AJAX) ---
             document.querySelectorAll('.status-select-ajax').forEach(select => {
                 select.addEventListener('change', function() {
                     const id = this.getAttribute('data-id');
+                    const statusBloqueado = this.getAttribute('data-status-atual');
                     const novoStatus = this.value;
                     const badgeAntigo = document.getElementById('badge-' + id);
-                    const statusAntigo = badgeAntigo.textContent.trim();
-                    let custoPeca = 0;
 
+                    if (statusBloqueado === 'Entregue') {
+                        alert("O.S. finalizada! Não é possível alterar o status de uma ordem já entregue.");
+                        this.value = 'Entregue';
+                        return;
+                    }
+
+                    let custoPeca = 0;
                     if (novoStatus === 'Entregue') {
                         const resposta = prompt("Gasto com peças (R$):", "0.00");
                         if (resposta === null) {
-                            this.value = statusAntigo;
+                            this.value = statusBloqueado;
                             return;
                         }
                         custoPeca = parseFloat(resposta.replace(',', '.')) || 0;
@@ -282,22 +310,49 @@
                         if(data.success) {
                             badgeAntigo.textContent = data.novoStatus;
                             badgeAntigo.className = 'badge mb-1 d-block status-badge-text ' + getBadgeClass(data.novoStatus);
-
+                            this.setAttribute('data-status-atual', data.novoStatus);
                             const row = this.closest('tr');
                             const valorExibido = row.querySelector('.valor-total-exibido');
                             const gastoLabel = document.getElementById('gasto-pecas-' + id);
-
-                            if (data.novoValor !== undefined) {
-                                valorExibido.innerText = "R$ " + data.novoValor.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                            }
+                            const lucroLabel = document.getElementById('lucro-liquido-' + id);
+                            let valorBruto = data.novoValor || parseFloat(valorExibido.innerText.replace('R$', '').replace('.', '').replace(',', '.')) || 0;
+                            valorExibido.innerText = "R$ " + valorBruto.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
                             if (custoPeca > 0 && novoStatus === 'Entregue') {
                                 gastoLabel.innerText = "- R$ " + custoPeca.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " gasto de peças";
-                            } else if (novoStatus !== 'Entregue') {
+                                let lucroLiquido = valorBruto - custoPeca;
+                                lucroLabel.innerText = "= R$ " + lucroLiquido.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " lucro líquido";
+                            } else {
                                 gastoLabel.innerText = "";
+                                lucroLabel.innerText = "";
                             }
                         }
                     });
+                });
+            });
+
+            // --- FUNÇÃO DELETAR COM TRAVA JS ---
+            document.querySelectorAll('.btn-deletar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (!isAdmin) {
+                        alert("Ação negada: Apenas o administrador da Shark Eletrônicos pode excluir ordens.");
+                        return;
+                    }
+                    const id = this.getAttribute('data-id');
+                    if (confirm(`Deseja realmente excluir a O.S. #${id}? Esta ação não pode ser desfeita.`)) {
+                        fetch(`/ordens/deletar/${id}`, {
+                            method: 'DELETE',
+                            headers: { [header]: token }
+                        }).then(res => {
+                            if (res.ok) {
+                                this.closest('tr').remove();
+                            } else if (res.status === 403) {
+                                alert("Você não possui permissão administrativa para deletar.");
+                            } else {
+                                alert("Erro ao deletar O.S.");
+                            }
+                        });
+                    }
                 });
             });
 
@@ -306,9 +361,9 @@
                 return c[s] || 'bg-secondary';
             }
 
+            // --- FILTRO DE BUSCA ---
             const buscaId = document.getElementById('buscaId');
             const buscaNome = document.getElementById('buscaNome');
-            const buscaData = document.getElementById('buscaData');
             const buscaStatus = document.getElementById('buscaStatus');
             const btnReset = document.getElementById('btnReset');
 
@@ -316,24 +371,20 @@
                 const vId = buscaId.value.trim().replace('#', '').toLowerCase();
                 const vNome = buscaNome.value.trim().toLowerCase();
                 const vStatus = buscaStatus.value.toLowerCase();
-
                 document.querySelectorAll('.ordem-row').forEach(row => {
                     const rId = row.querySelector('.os-id-label').innerText.replace('#', '').toLowerCase();
                     const rNome = row.querySelector('.cliente-nome-col').innerText.toLowerCase();
                     const rStatus = row.querySelector('.status-badge-text').innerText.toLowerCase();
-
                     const matchId = vId === "" || rId === vId;
                     const matchNome = vNome === "" || rNome.includes(vNome);
                     const matchStatus = vStatus === "" || rStatus === vStatus;
-
                     row.style.display = (matchId && matchNome && matchStatus) ? "" : "none";
                 });
             }
 
-            [buscaId, buscaNome, buscaData, buscaStatus].forEach(el => el.addEventListener('input', filtrar));
-
-            btnReset.addEventListener('click', function() {
-                buscaId.value = ''; buscaNome.value = ''; buscaData.value = ''; buscaStatus.value = '';
+            [buscaId, buscaNome, buscaStatus].forEach(el => el.addEventListener('input', filtrar));
+            btnReset.addEventListener('click', () => {
+                buscaId.value = ''; buscaNome.value = ''; buscaStatus.value = '';
                 filtrar();
             });
         });

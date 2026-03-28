@@ -114,7 +114,7 @@
                     <div class="card p-4 h-100 shark-card border-left-success">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-white-50 small fw-bold text-uppercase mb-2">Venda Bruta</h6>
+                                <h6 class="text-success small fw-bold text-uppercase mb-2">Venda Bruta</h6>
                                 <h3 class="text-white mb-0 fw-bold">R$ <span th:text="${totalVendasBruto != null ? #numbers.formatDecimal(totalVendasBruto, 1, 'POINT', 2, 'COMMA') : '0,00'}"></span></h3>
                             </div>
                             <i class="bi bi-graph-up text-success icon-large-side glow-success"></i>
@@ -151,7 +151,7 @@
                     <div class="card p-4 h-100 shark-card border-left-success">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-white-50 small fw-bold text-uppercase mb-2">OS Bruto</h6>
+                                <h6 class="text-success small fw-bold text-uppercase mb-2">O.S Bruto</h6>
                                 <h3 class="text-white mb-0 fw-bold">R$ <span th:text="${totalServicosBruto != null ? #numbers.formatDecimal(totalServicosBruto, 1, 'POINT', 2, 'COMMA') : '0,00'}"></span></h3>
                             </div>
                             <i class="bi bi-graph-up text-success icon-large-side glow-success"></i>

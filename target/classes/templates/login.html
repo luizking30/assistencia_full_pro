@@ -10,7 +10,7 @@
     <style>
         :root {
             --shark-blue: #0047ab;
-            --shark-light-blue: #00d4ff; /* Azul mais neon */
+            --shark-light-blue: #00d4ff;
             --shark-black: #020617;
             --shark-white: #f8fafc;
             --text-muted: #94a3b8;
@@ -39,26 +39,11 @@
             text-align: center;
         }
 
-        .login-header {
-            margin-bottom: 35px;
-        }
-
-        /* Estilização da Logo */
         .brand-logo {
-            width: 300px; /* Tamanho ajustado */
+            width: 300px;
             height: auto;
             margin-bottom: 10px;
-            /* Filtro para dar um leve brilho neon azul na logo */
             filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.6));
-        }
-
-        .login-header h2 {
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            margin: 0;
-            color: var(--shark-white);
-            font-size: 1.8rem;
         }
 
         .login-header p {
@@ -66,7 +51,7 @@
             font-size: 0.9rem;
             font-weight: 700;
             letter-spacing: 1px;
-            margin: 0;
+            margin-bottom: 30px;
         }
 
         .form-floating > .form-control {
@@ -82,10 +67,6 @@
             background-color: var(--shark-black);
         }
 
-        .form-floating > label {
-            color: var(--text-muted);
-        }
-
         .btn-login {
             width: 100%;
             padding: 14px;
@@ -97,7 +78,6 @@
             text-transform: uppercase;
             letter-spacing: 1.5px;
             transition: all 0.3s ease;
-            margin-top: 10px;
         }
 
         .btn-login:hover {
@@ -105,6 +85,24 @@
             color: var(--shark-blue);
             transform: translateY(-3px);
             box-shadow: 0 10px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-toggle-reg {
+            background: transparent;
+            border: 1px dashed var(--text-muted);
+            color: var(--text-muted);
+            font-weight: 700;
+            border-radius: 12px;
+            padding: 12px;
+            width: 100%;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-toggle-reg:hover {
+            border-color: var(--shark-light-blue);
+            color: var(--shark-light-blue);
         }
 
         .alert-custom {
@@ -118,16 +116,9 @@
             gap: 10px;
             background: rgba(0, 71, 171, 0.1);
             border: 1px solid var(--shark-blue);
-            color: var(--shark-light-blue);
         }
 
-        .footer-text {
-            margin-top: 30px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+        #nomeContainer { display: none; }
     </style>
 </head>
 <body>
@@ -135,22 +126,37 @@
 <div class="login-card">
     <div class="login-header">
         <img th:src="@{/images/logo.png}" alt="Shark Eletrônicos" class="brand-logo">
-        <p>GESTÃO DE LOJA</p>
+        <p id="headerSubtitle">GESTÃO DE LOJA</p>
+    </div>
+
+    <div th:if="${param.success}" class="alert-custom" style="color: #00ff88; border-color: #00ff88;">
+        <i class="bi bi-check-circle"></i> Solicitação enviada! Aguarde aprovação.
     </div>
 
     <div th:if="${param.error}" class="alert-custom" style="color: #ff4d4d; border-color: #ff4d4d;">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <span>Usuário ou senha incorretos.</span>
+        <i class="bi bi-exclamation-triangle"></i>
+        <span th:if="${session.SPRING_SECURITY_LAST_EXCEPTION != null}"
+              th:text="${session.SPRING_SECURITY_LAST_EXCEPTION.message}">
+            Erro ao acessar.
+        </span>
+        <span th:unless="${session.SPRING_SECURITY_LAST_EXCEPTION != null}">
+            Usuário ou senha incorretos.
+        </span>
     </div>
 
-    <div th:if="${param.logout}" class="alert-custom">
-        <i class="bi bi-info-circle-fill"></i>
-        <span>Sessão encerrada com sucesso.</span>
+    <div th:if="${param.logout}" class="alert-custom" style="color: var(--shark-light-blue); border-color: var(--shark-light-blue);">
+        <i class="bi bi-info-circle"></i> Você saiu do sistema.
     </div>
 
-    <form th:action="@{/login}" method="post">
+    <form id="authForm" th:action="@{/login}" method="post">
+
+        <div class="form-floating mb-3" id="nomeContainer">
+            <input type="text" name="nome" class="form-control" id="nomeInput" placeholder="Nome Completo">
+            <label for="nomeInput"><i class="bi bi-person-vcard me-2"></i>Nome Completo</label>
+        </div>
+
         <div class="form-floating mb-3">
-            <input type="text" name="username" class="form-control" id="userInput" placeholder="Usuário" required autofocus>
+            <input type="text" name="username" class="form-control" id="userInput" placeholder="Usuário" required>
             <label for="userInput"><i class="bi bi-person me-2"></i>Usuário</label>
         </div>
 
@@ -159,15 +165,55 @@
             <label for="passInput"><i class="bi bi-key me-2"></i>Senha</label>
         </div>
 
-        <button type="submit" class="btn-login">
+        <button type="submit" class="btn-login" id="mainBtn">
             Acessar Painel
         </button>
     </form>
 
-    <div class="footer-text">
+    <button type="button" class="btn-toggle-reg" id="toggleBtn" onclick="toggleAuth()">
+        <i class="bi bi-person-plus-fill me-2"></i>Solicitar acesso (Novo Funcionário)
+    </button>
+
+    <div class="footer-text" style="margin-top: 25px; font-size: 0.7rem; color: var(--text-muted);">
         &copy; 2026 Shark Eletrônicos | Brasília-DF
     </div>
 </div>
+
+<script>
+    let isRegister = false;
+
+    function toggleAuth() {
+        isRegister = !isRegister;
+        const form = document.getElementById('authForm');
+        const nomeContainer = document.getElementById('nomeContainer');
+        const nomeInput = document.getElementById('nomeInput');
+        const mainBtn = document.getElementById('mainBtn');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const subtitle = document.getElementById('headerSubtitle');
+
+        // Limpa mensagens de erro ao trocar de tela
+        const alerts = document.querySelectorAll('.alert-custom');
+        alerts.forEach(a => a.style.display = 'none');
+
+        if (isRegister) {
+            form.action = "/registro";
+            nomeContainer.style.display = "block";
+            nomeInput.required = true;
+            mainBtn.innerText = "Enviar Solicitação";
+            subtitle.innerText = "NOVO CADASTRO";
+            subtitle.style.color = "#ffcc00";
+            toggleBtn.innerHTML = '<i class="bi bi-arrow-left me-2"></i>Voltar para Login';
+        } else {
+            form.action = "/login";
+            nomeContainer.style.display = "none";
+            nomeInput.required = false;
+            mainBtn.innerText = "Acessar Painel";
+            subtitle.innerText = "GESTÃO DE LOJA";
+            subtitle.style.color = "var(--shark-light-blue)";
+            toggleBtn.innerHTML = '<i class="bi bi-person-plus-fill me-2"></i>Solicitar acesso (Novo Funcionário)';
+        }
+    }
+</script>
 
 </body>
 </html>

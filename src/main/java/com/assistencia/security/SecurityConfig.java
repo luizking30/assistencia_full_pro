@@ -7,9 +7,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 
 @Configuration
 @EnableMethodSecurity
@@ -19,47 +16,38 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // 1. AQUI ESTÁ A CHAVE: Liberando a pasta de imagens para o login
-                        .requestMatchers("/login", "/css/**", "/js/**", "/images/**").permitAll()
+                        // Liberando login, registro e recursos estáticos
+                        .requestMatchers("/login", "/registro", "/css/**", "/js/**", "/images/**").permitAll()
+
+                        // Restringindo a nova área de gestão apenas para ADMIN
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+
+                        // Qualquer outra rota exige estar logado
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .successHandler((request, response, authentication) -> {
-                            // Sua lógica de redirecionamento para o dashboard
-                            response.sendRedirect("/dashboard");
-                        })
+                        // O sucessHandler agora pode ser simplificado ou mantido para o dashboard
+                        .defaultSuccessUrl("/dashboard", true)
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
+                // Reativar CSRF é recomendado para produção, mas mantendo conforme seu código anterior
                 .csrf(csrf -> csrf.disable());
 
         return http.build();
-    }
-
-
-    @Bean
-    public InMemoryUserDetailsManager userDetailsService() {
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder().encode("123456"))
-                .roles("ADMIN")
-                .build();
-
-        UserDetails funcionario = User.builder()
-                .username("funcionario")
-                .password(passwordEncoder().encode("123456"))
-                .roles("FUNCIONARIO")
-                .build();
-
-        return new InMemoryUserDetailsManager(admin, funcionario);
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+    /* NOTA: O 'InMemoryUserDetailsManager' foi removido.
+       Para o sistema funcionar com o seu banco de dados, você deve criar uma classe
+       'UserDetailsService' que busque o 'Usuario' no banco e verifique o campo 'aprovado'.
+    */
 }

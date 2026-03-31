@@ -2,6 +2,8 @@ package com.assistencia.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
+import lombok.EqualsAndHashCode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +26,20 @@ public class Venda {
     @Column(name = "custo_total_estoque")
     private Double custoTotalEstoque = 0.0;
 
-    @Column(name = "vendedor", nullable = false)
-    private String vendedor;
+    // MELHORIA: nullable = true permite que o JPA salve mesmo se o vendedor não for setado no objeto,
+    // evitando o erro de "default value" no MySQL se você ajustar a coluna no banco também.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vendedor_id", nullable = true)
+    @ToString.Exclude // Evita erro de recursão no log do Lombok
+    @EqualsAndHashCode.Exclude
+    private Usuario vendedor;
 
+    @Column(name = "nome_vendedor_no_ato")
+    private String nomeVendedorNoAto;
+
+    private boolean pago = false;
+
+    // MELHORIA: Adicionado orphanRemoval para limpar itens excluídos da lista
     @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemVenda> itens = new ArrayList<>();
 
@@ -35,8 +48,7 @@ public class Venda {
     }
 
     /**
-     * Este método roda AUTOMATICAMENTE antes de salvar no banco.
-     * Ele garante que o lucro e o custo da Shark Eletrônicos sejam calculados corretamente.
+     * Sincroniza cálculos e histórico antes de persistir.
      */
     @PrePersist
     @PreUpdate
@@ -45,33 +57,29 @@ public class Venda {
             this.dataHora = LocalDateTime.now();
         }
 
-        // Garante que o vendedor não fique nulo para o relatório
-        if (this.vendedor == null || this.vendedor.trim().isEmpty()) {
-            this.vendedor = "Sistema Shark";
+        // Garante o registro do nome para auditoria (Shark Eletrônicos)
+        if (this.vendedor != null) {
+            this.nomeVendedorNoAto = this.vendedor.getNome();
+        } else if (this.nomeVendedorNoAto == null) {
+            this.nomeVendedorNoAto = "Sistema Shark";
         }
 
         double totalVendaCalculado = 0.0;
         double totalCustoCalculado = 0.0;
 
-        if (itens != null && !itens.isEmpty()) {
+        if (itens != null) {
             for (ItemVenda item : itens) {
-                // Essencial: Vincula o item à venda pai para o JPA salvar os itens
-                item.setVenda(this);
+                item.setVenda(this); // Sincronização bidirecional essencial
 
                 int qtd = (item.getQuantidade() != null) ? item.getQuantidade() : 0;
-
-                // Preço de Venda (Entrada no Caixa)
                 double precoVenda = (item.getPrecoUnitario() != null) ? item.getPrecoUnitario() : 0.0;
-                totalVendaCalculado += (precoVenda * qtd);
-
-                // Preço de Custo (Saída do Estoque/Bolso)
-                // Certifique-se que o objeto ItemVenda tenha o campo 'custoUnitario'
                 double precoCusto = (item.getCustoUnitario() != null) ? item.getCustoUnitario() : 0.0;
+
+                totalVendaCalculado += (precoVenda * qtd);
                 totalCustoCalculado += (precoCusto * qtd);
             }
         }
 
-        // Atualiza os campos que o Relatório Financeiro utiliza
         this.valorTotal = totalVendaCalculado;
         this.custoTotalEstoque = totalCustoCalculado;
     }

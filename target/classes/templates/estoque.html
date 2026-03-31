@@ -45,8 +45,8 @@
             <div class="card-body p-4">
                 <form th:action="@{/estoque/salvar}" method="post" id="formEstoque" class="row g-3 align-items-end">
 
-                    <div class="col-md-2">
-                        <label class="form-label text-info small fw-bold text-uppercase">ID do Produto</label>
+                    <div class="col-md-1">
+                        <label class="form-label text-info small fw-bold text-uppercase">ID</label>
                         <input id="campoId" name="id" type="number" class="form-control bg-black text-white border-secondary shadow-none"
                                placeholder="Ex: 101" required onchange="verificarDuplicidade(this.value)">
                     </div>
@@ -71,7 +71,7 @@
                         <input id="campoQtd" name="quantidade" type="number" class="form-control bg-black text-white border-secondary shadow-none" value="1" required>
                     </div>
 
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <div class="d-flex gap-2">
                             <button type="submit" id="btnAcao" class="btn btn-info w-100 fw-bold"
                                     th:classappend="${#authorization.expression('hasRole(''ADMIN'')')} ? '' : 'btn-readonly'">
@@ -128,36 +128,47 @@
 
         <div class="card shadow-lg border-0 bg-dark text-white mb-5" style="border-radius: 15px; overflow: hidden; border-left: 5px solid #333 !important;">
             <div class="table-responsive">
-                <table class="table table-hover table-dark mb-0 align-middle">
+                <table class="table table-hover table-dark mb-0 align-middle text-center">
                     <thead class="bg-black text-muted text-uppercase small">
                     <tr>
-                        <th class="ps-4">ID</th>
-                        <th>PRODUTO</th>
-                        <th class="text-center">QTD</th>
+                        <th class="ps-4 text-start">ID</th>
+                        <th class="text-start">PRODUTO</th>
+                        <th>QTD</th>
+                        <th>CUSTO (UND)</th>
                         <th>VENDA (UND)</th>
                         <th>LUCRO (UND)</th>
-                        <th>CUSTO TOTAL</th>
-                        <th>VENDA TOTAL</th>
-                        <th class="text-center">STATUS</th>
-                        <th class="text-center">AÇÕES</th>
+                        <th>CUSTO (T.)</th>
+                        <th>VENDA (T.)</th>
+                        <th>LUCRO (T.)</th>
+                        <th>AÇÕES</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="p : ${produtos}">
-                        <td class="ps-4 fw-bold text-info" th:text="${p.id}"></td>
-                        <td class="fw-bold" th:text="${p.nome}"></td>
-                        <td class="text-center fw-bold" th:text="${p.quantidade}"></td>
+                        <td class="ps-4 text-start fw-bold text-info" th:text="${p.id}"></td>
+                        <td class="text-start fw-bold" th:text="${p.nome}"></td>
+                        <td class="fw-bold" th:text="${p.quantidade}"></td>
+
+                        <td class="text-danger" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto, 1, 'POINT', 2, 'COMMA')}"></td>
                         <td class="text-success fw-bold" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda, 1, 'POINT', 2, 'COMMA')}"></td>
-                        <td class="text-info fw-bold"
-                            th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda - p.precoCusto, 1, 'POINT', 2, 'COMMA')}">
+
+                        <td class="text-info fw-bold">
+                            <span th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda - p.precoCusto, 1, 'POINT', 2, 'COMMA')}"></span>
+                            <div class="small text-info opacity-75" style="font-size: 0.70rem;" th:if="${p.precoCusto > 0}">
+                                <span th:text="${#numbers.formatDecimal(((p.precoVenda - p.precoCusto) / p.precoCusto) * 100, 1, 1) + '%'}"></span>
+                            </div>
                         </td>
+
                         <td class="text-danger" th:text="${'R$ ' + #numbers.formatDecimal(p.precoCusto * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
                         <td class="text-success" th:text="${'R$ ' + #numbers.formatDecimal(p.precoVenda * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></td>
-                        <td class="text-center">
-                            <span th:if="${p.quantidade <= 2}" class="badge bg-danger">CRÍTICO</span>
-                            <span th:if="${p.quantidade > 2 && p.quantidade <= 5}" class="badge bg-warning text-dark">BAIXO</span>
-                            <span th:if="${p.quantidade > 5}" class="badge bg-success">OK</span>
+
+                        <td class="text-info fw-bold">
+                            <span th:text="${'R$ ' + #numbers.formatDecimal((p.precoVenda - p.precoCusto) * p.quantidade, 1, 'POINT', 2, 'COMMA')}"></span>
+                            <div class="small text-info opacity-75" style="font-size: 0.70rem;" th:if="${p.precoCusto > 0}">
+                                <span th:text="${#numbers.formatDecimal(((p.precoVenda - p.precoCusto) / p.precoCusto) * 100, 1, 1) + '%'}"></span>
+                            </div>
                         </td>
+
                         <td class="text-center">
                             <div class="btn-group gap-1">
                                 <button type="button" class="btn btn-sm btn-outline-info btn-editar-estoque"
@@ -183,10 +194,8 @@
 
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
-        // Variável de controle de permissão vinda do Spring Security
         const isAdmin = [[${#authorization.expression('hasRole("ADMIN")')}]];
 
-        // Gerenciamento de cliques no botão editar
         document.querySelectorAll('.btn-editar-estoque').forEach(btn => {
             btn.addEventListener('click', function() {
                 if (!isAdmin) {
@@ -198,7 +207,6 @@
             });
         });
 
-        // Bloqueio preventivo no envio do formulário
         document.getElementById("formEstoque").addEventListener("submit", function(e) {
             if (!isAdmin) {
                 e.preventDefault();

@@ -12,6 +12,8 @@ import java.util.List;
 @Repository
 public interface VendaRepository extends JpaRepository<Venda, Long> {
 
+    // --- RELATÓRIOS E DASHBOARD ---
+
     // Retorna a LISTA de vendas para preencher as tabelas do histórico/relatório
     List<Venda> findByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
 
@@ -22,12 +24,24 @@ public interface VendaRepository extends JpaRepository<Venda, Long> {
     @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
     Double somarVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
-    // 2. 🚀 MÉTODO ADICIONADO PARA RESOLVER O ERRO DO CONTROLLER
-    // Soma o CUSTO total de estoque das vendas (Para o card "Custo de Estoque")
+    // 2. Soma o CUSTO total de estoque das vendas (Para calcular lucro real)
     @Query("SELECT COALESCE(SUM(v.custoTotalEstoque), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
     Double somarCustoEstoqueDasVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
-    // Busca vendas por nome de produto (Opcional)
-    @Query("SELECT v FROM Venda v JOIN v.itens i WHERE i.produto.nome LIKE %:nome%")
+
+    // --- SISTEMA DE COMISSÃO ---
+
+    // Busca todas as vendas de um vendedor específico que ainda não tiveram a comissão paga
+    List<Venda> findByVendedorIdAndPagoFalse(Long vendedorId);
+
+    // Soma o valor total de vendas pendentes de um vendedor para o cálculo do pagamento
+    @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v WHERE v.vendedor.id = :vendedorId AND v.pago = false")
+    Double somarTotalVendasPendentesPorVendedor(@Param("vendedorId") Long vendedorId);
+
+
+    // --- BUSCAS FILTRADAS ---
+
+    // CORREÇÃO: Navegando de Item (i) -> Produto -> Nome
+    @Query("SELECT DISTINCT v FROM Venda v JOIN v.itens i WHERE i.produto.nome LIKE %:nome%")
     List<Venda> findByNomeProduto(@Param("nome") String nome);
 }

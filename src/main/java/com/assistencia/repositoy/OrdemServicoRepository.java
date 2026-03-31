@@ -29,13 +29,10 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long
 
     // --- 🚀 MÉTODOS PARA O DASHBOARD E RELATÓRIOS ---
 
-    // Conta OS criadas (abertas) no período
     long countByDataBetween(LocalDateTime inicio, LocalDateTime fim);
 
-    // Conta OS entregues (Usa exatamente os nomes da Model: status e dataEntrega)
     long countByStatusAndDataEntregaBetween(String status, LocalDateTime inicio, LocalDateTime fim);
 
-    // Soma o Valor Bruto das OS entregues no período
     @Query("SELECT COALESCE(SUM(os.valorTotal), 0.0) FROM OrdemServico os " +
             "WHERE LOWER(os.status) = LOWER(:status) " +
             "AND os.dataEntrega BETWEEN :inicio AND :fim")
@@ -43,7 +40,6 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long
                                       @Param("inicio") LocalDateTime inicio,
                                       @Param("fim") LocalDateTime fim);
 
-    // Soma o Custo de Peças das OS entregues no período
     @Query("SELECT COALESCE(SUM(os.custoPeca), 0.0) FROM OrdemServico os " +
             "WHERE LOWER(os.status) = LOWER(:status) " +
             "AND os.dataEntrega BETWEEN :inicio AND :fim")
@@ -51,9 +47,23 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long
                                       @Param("inicio") LocalDateTime inicio,
                                       @Param("fim") LocalDateTime fim);
 
-    // --- MÉTODOS DE BUSCA PARA LISTAGEM (RELATÓRIO) ---
+    // --- 🛠️ NOVOS MÉTODOS PARA COMISSÃO E PAGAMENTO ---
 
-    // Simplificado para evitar o erro "cannot find symbol"
+    /**
+     * Busca todas as Ordens de Serviço de um técnico específico que:
+     * 1. Estão com status 'ENTREGUE' ou 'CONCLUIDO'
+     * 2. Ainda não foram marcadas como pagas (pago = false)
+     */
+    List<OrdemServico> findByTecnicoIdAndPagoFalse(Long tecnicoId);
+
+    /**
+     * Soma o valor total (Mão de obra + Peças) das OS pendentes de um técnico
+     */
+    @Query("SELECT COALESCE(SUM(os.valorTotal), 0.0) FROM OrdemServico os WHERE os.tecnico.id = :tecnicoId AND os.pago = false")
+    Double somarTotalOsPendentesPorTecnico(@Param("tecnicoId") Long tecnicoId);
+
+    // --- MÉTODOS DE BUSCA PARA LISTAGEM ---
+
     List<OrdemServico> findByStatusAndDataEntregaBetween(String status, LocalDateTime inicio, LocalDateTime fim);
 
     List<OrdemServico> findByStatusOrderByIdDesc(String status);

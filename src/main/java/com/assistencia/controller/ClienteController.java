@@ -26,7 +26,7 @@ public class ClienteController {
 
     /**
      * ENDPOINT PARA AUTOCOMPLETE (ESTILO GOOGLE)
-     * Retorna JSON com ID, Nome e WhatsApp para o formulário de O.S.
+     * Retorna JSON com ID, Nome, WhatsApp e CPF para o formulário de O.S.
      */
     @GetMapping("/sugestoes")
     @ResponseBody
@@ -42,6 +42,7 @@ public class ClienteController {
                     map.put("id", c.getId());
                     map.put("nome", c.getNome());
                     map.put("whatsapp", c.getWhatsapp());
+                    map.put("cpf", c.getCpf()); // <-- Adicionado para preenchimento automático na O.S.
                     return map;
                 })
                 .collect(Collectors.toList());

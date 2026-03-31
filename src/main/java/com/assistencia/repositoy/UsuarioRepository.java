@@ -1,6 +1,8 @@
 package com.assistencia.repository;
 
+// 🚀 ADICIONE ESTE IMPORT PARA RESOLVER O ERRO:
 import com.assistencia.model.Usuario;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
@@ -14,7 +16,4 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     // 2. ÚTIL: Para sua tela de Gestão, buscar quem ainda não foi aprovado
     List<Usuario> findByAprovadoFalse();
-
-    // NOTA: O método findByUsernameAndSenha foi REMOVIDO.
-    // O Spring Security cuida da senha usando BCrypt automaticamente.
 }

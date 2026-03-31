@@ -26,11 +26,12 @@
         #sugestoesProdutos {
             z-index: 1050;
             display: none;
-            max-height: 250px;
+            max-height: 350px; /* Aumentado para melhor visualização da lista completa */
             overflow-y: auto;
             border: 2px solid #0dcaf0;
             border-radius: 0 0 10px 10px;
             background: #111 !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
         .suggestion-item {
             cursor: pointer;
@@ -99,11 +100,14 @@
             </div>
             <div class="card-body p-4">
                 <form th:action="@{/vendas/salvar}" th:object="${venda}" method="post" id="formVenda">
+
+                    <span th:text="${#authentication.name}">Nome do Vendedor</span>
+
                     <div class="row g-4 align-items-end mb-4 pb-4 border-bottom border-secondary">
                         <div class="col-md-4 position-relative">
                             <label class="form-label text-info small fw-bold text-uppercase">BUSCAR PRODUTO</label>
                             <input type="text" id="campoBusca" class="form-control bg-black text-white border-secondary shadow-none p-3"
-                                   placeholder="Nome ou ID do item..." autocomplete="off">
+                                   placeholder="Clique para ver todos ou digite..." autocomplete="off">
                             <div id="sugestoesProdutos" class="list-group position-absolute w-100 shadow-lg"></div>
                             <input type="hidden" id="produtoIdReal">
                             <input type="hidden" id="nomeSelecionado">
@@ -189,7 +193,7 @@
                         <td>
                             <span class="badge bg-dark border border-info text-info p-2">
                                 <i class="bi bi-person-fill me-1"></i>
-                                <span th:text="${v.vendedor}"></span>
+                                <span th:text="${v.vendedor != null ? v.vendedor.nome : 'N/A'}"></span>
                             </span>
                         </td>
                         <td>
@@ -239,9 +243,7 @@
 
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
-        // Variável de controle de permissão vinda do Spring Security
         const isAdmin = [[${#authorization.expression('hasRole("ADMIN")')}]];
-
         let itensVenda = [];
         const campoBusca = document.getElementById('campoBusca');
         const sugestoesBox = document.getElementById('sugestoesProdutos');
@@ -256,26 +258,40 @@
         }
         setInterval(atualizarRelogio, 1000);
 
-        // BUSCA HÍBRIDA (NOME OU ID)
+        // FUNÇÃO CENTRAL DE CARREGAMENTO
+        function carregarProdutos(termo = "") {
+            const url = termo.length > 0
+                ? '/estoque/sugestoes?termo=' + encodeURIComponent(termo)
+                : '/estoque/sugestoes?termo=';
+
+            fetch(url)
+                .then(res => res.json())
+                .then(produtos => renderizarSugestoes(produtos, false));
+        }
+
+        // EVENTO FOCUS: ABRE AO CLICAR
+        campoBusca.addEventListener('focus', function() {
+            carregarProdutos(this.value.trim());
+        });
+
+        // EVENTO INPUT: REFINA AO DIGITAR
         campoBusca.addEventListener('input', function() {
             const termo = this.value.trim();
-            if (termo.length === 0) { sugestoesBox.style.display = 'none'; return; }
 
             if (/^\d+$/.test(termo)) {
                 fetch('/estoque/buscar/' + termo)
                     .then(res => res.ok ? res.json() : Promise.reject())
                     .then(p => renderizarSugestoes([p], true))
-                    .catch(() => buscarPorNome(termo));
-            } else if (termo.length >= 2) {
-                buscarPorNome(termo);
+                    .catch(() => carregarProdutos(termo));
+            } else {
+                carregarProdutos(termo);
             }
         });
 
-        function buscarPorNome(termo) {
-            fetch('/estoque/sugestoes?termo=' + encodeURIComponent(termo))
-                .then(res => res.json())
-                .then(produtos => renderizarSugestoes(produtos, false));
-        }
+        // FECHAR AO PERDER O FOCO
+        campoBusca.addEventListener('blur', function() {
+            setTimeout(() => { sugestoesBox.style.display = 'none'; }, 300);
+        });
 
         function renderizarSugestoes(produtos, porId) {
             sugestoesBox.innerHTML = '';
@@ -371,7 +387,6 @@
             campoBusca.focus();
         }
 
-        // ATALHOS DE TECLADO
         document.addEventListener('keydown', function(e) {
             if (e.key === "F2") {
                 e.preventDefault();

@@ -1,8 +1,10 @@
 package com.assistencia.controller;
 
+// 🚀 IMPORT ESSENCIAL PARA RESOLVER O SEU ERRO:
+import com.assistencia.model.Usuario;
+
 import com.assistencia.model.Cliente;
 import com.assistencia.model.OrdemServico;
-import com.assistencia.model.Usuario;
 import com.assistencia.repository.ClienteRepository;
 import com.assistencia.repository.OrdemServicoRepository;
 import com.assistencia.repository.UsuarioRepository;
@@ -39,21 +41,24 @@ public class OrdemServicoController {
         this.usuarioRepo = usuarioRepo;
     }
 
+    // Método privado para capturar o técnico/vendedor que está operando o sistema
     private Usuario getUsuarioLogado() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
+        String login;
+        if (principal instanceof UserDetails) {
+            login = ((UserDetails) principal).getUsername();
+        } else {
+            login = principal.toString();
+        }
+        // Retorna o objeto Usuario completo para vincular à O.S.
         return usuarioRepo.findByUsername(login).orElse(null);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','FUNCIONARIO')")
     @GetMapping
     public String listar(@RequestParam(required = false) String busca, Model model) {
-        List<OrdemServico> ordens;
-        if (busca != null && !busca.isEmpty()) {
-            ordens = ordemRepo.findAll(); // Ajuste conforme sua lógica de busca real
-        } else {
-            ordens = ordemRepo.findAll();
-        }
+        List<OrdemServico> ordens = ordemRepo.findAll();
+        model.addAttribute("todosClientes", clienteRepo.findAll());
         model.addAttribute("ordens", ordens);
         model.addAttribute("busca", busca);
         return "ordens";
@@ -68,13 +73,13 @@ public class OrdemServicoController {
                          @RequestParam Double valor,
                          RedirectAttributes ra) {
         try {
-            // REGRA 1: Não permitir valor menor que 0
             if (valor < 0) {
                 ra.addFlashAttribute("erro", "O valor da O.S. não pode ser negativo!");
                 return "redirect:/ordens";
             }
 
             Cliente c = clienteRepo.findById(clienteId).orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
+            Usuario logado = getUsuarioLogado();
 
             OrdemServico os = new OrdemServico();
             os.setClienteNome(c.getNome());
@@ -86,10 +91,14 @@ public class OrdemServicoController {
             os.setValorTotal(valor);
             os.setData(LocalDateTime.now());
             os.setCustoPeca(0.0);
-            os.setUsuario(getUsuarioLogado());
+
+            // Vincula o usuário logado como responsável pela abertura
+            os.setTecnico(logado);
+            os.setFuncionarioAbertura(logado != null ? logado.getNome() : "Sistema");
 
             if ("Entregue".equalsIgnoreCase(status)) {
                 os.setDataEntrega(LocalDateTime.now());
+                os.setFuncionarioEntrega(logado != null ? logado.getNome() : "Sistema");
             }
 
             ordemRepo.save(os);
@@ -108,22 +117,25 @@ public class OrdemServicoController {
                                               @RequestParam(defaultValue = "0") Double custoPeca) {
         try {
             OrdemServico os = ordemRepo.findById(id).orElseThrow();
+            Usuario logado = getUsuarioLogado();
+            String nomeLogado = (logado != null) ? logado.getNome() : "Sistema";
 
-            // REGRA 2: Bloquear alteração se já estiver 'Entregue'
             if ("Entregue".equalsIgnoreCase(os.getStatus())) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "O.S. Finalizada!"));
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "O.S. já finalizada!"));
             }
 
             os.setStatus(status);
 
+            // Auditoria de quem mexeu na peça
+            if ("Em andamento".equalsIgnoreCase(status)) {
+                os.setFuncionarioAndamento(nomeLogado);
+            }
+
             if ("Entregue".equalsIgnoreCase(status)) {
                 os.setDataEntrega(LocalDateTime.now());
                 os.setCustoPeca(custoPeca);
-                if (os.getUsuario() == null) {
-                    os.setUsuario(getUsuarioLogado());
-                }
-            } else {
-                os.setDataEntrega(null);
+                os.setFuncionarioEntrega(nomeLogado);
+                os.setTecnico(logado);
             }
 
             ordemRepo.save(os);
@@ -131,27 +143,22 @@ public class OrdemServicoController {
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "novoStatus", status,
-                    "novoValor", os.getValorTotal(),
-                    "custoPeca", os.getCustoPeca()
+                    "funcionario", nomeLogado
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 
-    // REGRA 3: Endpoint para DELETAR O.S.
-    @PreAuthorize("hasRole('ADMIN')") // Sugestão: Apenas Admin deleta
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/deletar/{id}")
     @ResponseBody
     public ResponseEntity<?> deletar(@PathVariable Long id) {
         try {
-            if (!ordemRepo.existsById(id)) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("O.S. não encontrada.");
-            }
             ordemRepo.deleteById(id);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao deletar O.S.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao deletar.");
         }
     }
 
@@ -171,13 +178,16 @@ public class OrdemServicoController {
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm");
 
             document.add(new Paragraph("SHARK ELETRÔNICOS").setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("Brasília - DF\nWhats: (61) 99999-9999").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("Brasília - DF").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("ORDEM DE SERVIÇO #" + os.getId()).setBold().setFontSize(12).setTextAlignment(TextAlignment.CENTER));
-
-            String nomeVendedor = (os.getUsuario() != null) ? os.getUsuario().getNome() : "Sistema";
-            document.add(new Paragraph("Vendedor: " + nomeVendedor).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("Vendedor: " + os.getFuncionarioAbertura()).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("Abertura: " + os.getData().format(fmt)).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+
+            if(os.getFuncionarioEntrega() != null) {
+                document.add(new Paragraph("Entregue por: " + os.getFuncionarioEntrega()).setFontSize(7).setTextAlignment(TextAlignment.CENTER));
+            }
+
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("CLIENTE: " + os.getClienteNome()).setFontSize(9));
             document.add(new Paragraph("EQUIPAMENTO: " + os.getProduto()).setFontSize(9));
@@ -191,7 +201,7 @@ public class OrdemServicoController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(ContentDisposition.inline().filename("OS_" + os.getId() + ".pdf").build());
+            headers.setContentDisposition(ContentDisposition.inline().filename("OS_SHARK_" + os.getId() + ".pdf").build());
 
             return new ResponseEntity<>(out.toByteArray(), headers, HttpStatus.OK);
         } catch (Exception e) {

@@ -4,29 +4,22 @@
       layout:decorate="~{layout}">
 <head>
   <title>Gestão de Equipe - Shark Eletrônicos</title>
-  <style>
-    .shark-card-admin {
-      background: rgba(15, 23, 42, 0.7);
-      border-radius: 15px;
-      border-left: 5px solid var(--shark-light-blue);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    }
-    .status-badge {
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-    .status-pendente { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107; }
-    .status-ativo { background: rgba(0, 200, 83, 0.2); color: #00c853; border: 1px solid #00c853; }
+  <meta th:if="${_csrf}" name="_csrf" th:content="${_csrf.token}"/>
+  <meta th:if="${_csrf}" name="_csrf_header" th:content="${_csrf.headerName}"/>
 
-    .table-admin thead {
-      background-color: var(--shark-black);
-      color: var(--shark-light-blue);
-      font-size: 0.8rem;
-      letter-spacing: 1px;
-    }
+  <style>
+    .shark-card-admin { background: rgba(15, 23, 42, 0.7); border-radius: 15px; border-left: 5px solid #0dcaf0; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    .table-admin thead { background-color: #000; color: #0dcaf0; font-size: 0.75rem; letter-spacing: 1px; }
+    .modal-shark { background: rgba(10, 15, 28, 0.98) !important; border: 1px solid #0dcaf0 !important; border-radius: 15px !important; backdrop-filter: blur(15px); color: white; }
+    .input-shark-dark { background-color: #000 !important; border: 1px solid #333 !important; color: #fff !important; }
+    .role-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 5px; font-weight: 800; letter-spacing: 0.5px; }
+    .role-tecnico { background: #6610f2; color: #fff; }
+    .role-vendedor { background: #0d6efd; color: #fff; }
+    .val-receber { font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9rem; }
+    .modal { background: rgba(0, 0, 0, 0.6); }
+    .modal-backdrop { display: none !important; }
+    .pulse { animation: pulse-animation 2s infinite; }
+    @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
   </style>
 </head>
 
@@ -34,80 +27,85 @@
 <div layout:fragment="conteudo">
   <div class="mt-2">
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h2 class="fw-bold mb-0 text-white">
-          <i class="bi bi-shield-lock-fill me-2" style="color: var(--shark-light-blue)"></i> Gestão de Equipe
-        </h2>
-        <p class="text-white-50 small">Aprovação e controle de acessos | Shark Eletrônicos</p>
-      </div>
-      <div class="text-end">
-                <span class="badge bg-primary px-3 py-2" style="border: 1px solid var(--shark-light-blue)">
-                    <i class="bi bi-people-fill me-2"></i> <span th:text="${usuarios.size()}">0</span> Cadastrados
-                </span>
-      </div>
+      <h2 class="fw-bold text-white mb-0">
+        <i class="bi bi-people-fill me-2" style="color: #0dcaf0"></i> Equipe Shark
+      </h2>
     </div>
 
-    <div th:if="${mensagem}" class="alert alert-success bg-dark text-success border-success shadow-lg mb-4">
-      <i class="bi bi-check-circle-fill me-2"></i> <span th:text="${mensagem}"></span>
-    </div>
-
-    <div class="card shark-card-admin overflow-hidden">
+    <div class="card shark-card-admin overflow-hidden mb-5">
       <div class="table-responsive">
-        <table class="table table-hover table-dark align-middle mb-0 table-admin">
+        <table class="table table-hover table-dark align-middle mb-0 text-center table-admin">
           <thead>
           <tr>
-            <th class="ps-4 py-3">ID</th>
-            <th>NOME COMPLETO</th>
-            <th>USUÁRIO (LOGIN)</th>
+            <th class="ps-4 text-start">NOME / FUNÇÃO</th>
+            <th>TAXAS (%)</th>
+            <th class="text-success">COMIS. O.S.</th>
+            <th class="text-info">COMIS. VENDAS</th>
+            <th class="text-warning">TOTAL A PAGAR</th>
             <th>STATUS</th>
-            <th class="text-center pe-4">AÇÕES</th>
+            <th class="pe-4">AÇÕES</th>
           </tr>
           </thead>
           <tbody>
           <tr th:each="u : ${usuarios}">
-            <td class="ps-4 text-info fw-bold" th:text="'#' + ${u.id}"></td>
-            <td>
-              <div class="d-flex align-items-center">
-                <div class="rounded-circle bg-secondary d-flex justify-content-center align-items-center me-3"
-                     style="width: 35px; height: 35px; background: linear-gradient(45deg, var(--shark-blue), var(--shark-light-blue)) !important;">
-                  <i class="bi bi-person text-white"></i>
-                </div>
-                <span class="fw-bold text-white" th:text="${u.nome}">Nome</span>
+            <td class="ps-4 text-start">
+              <div class="fw-bold text-white" th:text="${u.nome}">Nome</div>
+              <div class="d-flex gap-1 mt-1">
+                <span th:if="${u.tipoFuncionario == 'TECNICO' or u.tipoFuncionario == 'HIBRIDO'}" class="role-badge role-tecnico">TÉCNICO</span>
+                <span th:if="${u.tipoFuncionario == 'VENDEDOR' or u.tipoFuncionario == 'HIBRIDO'}" class="role-badge role-vendedor">VENDEDOR</span>
+                <span th:if="${u.tipoFuncionario == null}" class="role-badge bg-secondary">AGUARDANDO</span>
               </div>
             </td>
-            <td th:text="${u.username}" class="text-white-50">usuario.login</td>
+
             <td>
-                                <span th:if="${!u.aprovado}" class="status-badge status-pendente">
-                                    <i class="bi bi-hourglass-split me-1"></i> Aguardando
-                                </span>
-              <span th:if="${u.aprovado}" class="status-badge status-ativo">
-                                    <i class="bi bi-check-lg me-1"></i> Ativo
-                                </span>
+              <div class="small text-white-50">OS: [[${u.comissaoOs ?: 0}]]%</div>
+              <div class="small text-white-50">Ven: [[${u.comissaoVenda ?: 0}]]%</div>
             </td>
-            <td class="text-center pe-4">
+
+            <td class="val-receber text-success"
+                th:text="${#numbers.formatCurrency(saldosOs != null ? saldosOs.get(u.id) : 0.0)}"></td>
+
+            <td class="val-receber text-info"
+                th:text="${#numbers.formatCurrency(saldosVendas != null ? saldosVendas.get(u.id) : 0.0)}"></td>
+
+            <td class="val-receber text-warning fw-bold"
+                th:with="totalPagarLiquido=${totalPagar != null ? totalPagar.get(u.id) : 0.0}"
+                th:text="${#numbers.formatCurrency(totalPagarLiquido)}"></td>
+
+            <td>
+                <span th:class="${u.aprovado ? 'badge border border-info text-info' : 'badge bg-warning text-dark pulse'}"
+                      th:text="${u.aprovado ? 'ATIVO' : 'NOVO CADASTRO'}"></span>
+            </td>
+
+            <td class="pe-4">
               <div class="d-flex justify-content-center gap-2">
-
-                <form th:if="${!u.aprovado}" th:action="@{/funcionarios/aprovar/{id}(id=${u.id})}" method="post" class="m-0">
-                  <button type="submit" class="btn btn-sm btn-success">
-                    <i class="bi bi-person-check-fill me-1"></i> Aprovar
+                <form th:if="${!u.aprovado}" th:action="@{/admin/funcionarios/aprovar/{id}(id=${u.id})}" method="post" class="m-0">
+                  <button type="submit" class="btn btn-sm btn-success fw-bold px-3 shadow-sm">
+                    <i class="bi bi-check-lg me-1"></i> ACEITAR
                   </button>
                 </form>
 
-                <form th:action="@{/funcionarios/deletar/{id}(id=${u.id})}" method="post" class="m-0"
-                      onsubmit="return confirm('Tem certeza que deseja remover este acesso?')">
-                  <button type="submit" class="btn btn-sm btn-outline-danger">
-                    <i class="bi bi-trash3"></i>
+                <button th:if="${u.aprovado}"
+                        th:with="saldoOs=${saldosOs != null ? saldosOs.get(u.id) : 0.0}, saldoVenda=${saldosVendas != null ? saldosVendas.get(u.id) : 0.0}"
+                        class="btn btn-sm btn-success fw-bold"
+                        th:attr="data-id=${u.id}, data-nome=${u.nome}, data-saldo-os=${saldoOs}, data-saldo-venda=${saldoVenda}"
+                        onclick="prepararPagamento(this)">
+                  <i class="bi bi-cash-stack"></i> PAGAR
+                </button>
+
+                <button th:if="${u.aprovado}"
+                        class="btn btn-sm btn-outline-info"
+                        th:attr="data-id=${u.id}, data-nome=${u.nome}, data-tipo=${u.tipoFuncionario}, data-com-os=${u.comissaoOs}, data-com-venda=${u.comissaoVenda}"
+                        onclick="popularDados(this)">
+                  <i class="bi bi-gear-fill"></i>
+                </button>
+
+                <form th:action="@{/admin/funcionarios/deletar/{id}(id=${u.id})}" method="post" class="m-0">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deseja realmente remover este integrante?')">
+                    <i class="bi bi-person-x"></i>
                   </button>
                 </form>
-
               </div>
-            </td>
-          </tr>
-
-          <tr th:if="${#lists.isEmpty(usuarios)}">
-            <td colspan="5" class="text-center py-5 text-muted">
-              <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-              Nenhum funcionário cadastrado no sistema.
             </td>
           </tr>
           </tbody>
@@ -115,12 +113,194 @@
       </div>
     </div>
 
-    <div class="mt-4">
-      <a th:href="@{/dashboard}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-2"></i> Voltar ao Dashboard
-      </a>
+    <div class="mt-5 mb-5">
+      <h4 class="text-white fw-bold mb-3">
+        <i class="bi bi-clock-history me-2 text-info"></i> Histórico de Pagamentos
+      </h4>
+      <div class="card shark-card-admin overflow-hidden">
+        <div class="table-responsive">
+          <table class="table table-hover table-dark align-middle mb-0 text-center table-admin">
+            <thead>
+            <tr>
+              <th class="ps-4 text-start">FUNCIONÁRIO</th>
+              <th>DATA E HORA</th>
+              <th>RESPONSÁVEL</th>
+              <th class="pe-4 text-warning">VALOR ABATIDO</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="p : ${pagamentos}">
+              <td class="ps-4 text-start fw-bold text-white" th:text="${p.nomeFuncionario}">Vendedor</td>
+              <td class="text-white-50" th:text="${#temporals.format(p.dataHora, 'dd/MM/yyyy HH:mm')}"></td>
+              <td class="text-white-50" th:text="${p.responsavelPagamento}">ADMIN</td>
+              <td class="pe-4 text-success fw-bold" th:text="${#numbers.formatCurrency(p.valorPago)}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(pagamentos)}">
+              <td colspan="4" class="py-4 text-white-50">Nenhum pagamento registrado ainda.</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalComissao" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-shark">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title text-white fw-bold"><i class="bi bi-percent me-2"></i>Ajustar: <span id="nomeFuncModal" class="text-info"></span></h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="limparForçado()"></button>
+          </div>
+          <div class="modal-body p-4">
+            <input type="hidden" id="idFuncModal">
+            <div class="mb-4">
+              <label class="form-label text-white-50 small fw-bold">FUNÇÃO NO SISTEMA</label>
+              <select id="tipoFuncModal" class="form-select input-shark-dark p-2">
+                <option value="VENDEDOR">VENDEDOR / BALCÃO</option>
+                <option value="TECNICO">TÉCNICO / LABORATÓRIO</option>
+                <option value="HIBRIDO">HÍBRIDO (AMBOS)</option>
+              </select>
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <label class="form-label text-success small fw-bold">% COMISSÃO O.S.</label>
+                <input type="number" id="osFuncModal" class="form-control input-shark-dark" step="0.1">
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label text-info small fw-bold">% COMISSÃO VENDA</label>
+                <input type="number" id="vendaFuncModal" class="form-control input-shark-dark" step="0.1">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" onclick="limparForçado()">VOLTAR</button>
+            <button type="button" onclick="salvarConfig(event)" id="btnSalvar" class="btn btn-sm btn-info px-4 fw-bold text-dark">ATUALIZAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalPagamento" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-shark">
+          <form th:action="@{/pagamentos/registrar}" method="post">
+            <div class="modal-header border-0 pb-0">
+              <h5 class="modal-title text-white fw-bold"><i class="bi bi-wallet2 me-2 text-success"></i>Pagar: <span id="nomePagModal" class="text-success"></span></h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="limparForçado()"></button>
+            </div>
+            <div class="modal-body p-4">
+              <input type="hidden" name="funcionarioId" id="idPagModal">
+
+              <div class="mb-4">
+                <label class="form-label text-white-50 small fw-bold">TIPO DE COMISSÃO</label>
+                <select id="tipoComissaoModal" name="tipoComissao" class="form-select input-shark-dark p-2" onchange="alternarSaldoModal()">
+                  <option value="OS">PAGAR COMISSÃO O.S.</option>
+                  <option value="VENDA">PAGAR COMISSÃO VENDAS</option>
+                </select>
+              </div>
+
+              <div class="text-center mb-4 p-3" style="background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px dashed #28a745;">
+                <small class="text-white-50 d-block" id="labelSaldoModal">SALDO O.S. DISPONÍVEL</small>
+                <h3 class="text-success fw-bold mb-0" id="saldoDisponivelModal">R$ 0,00</h3>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label text-white-50 small fw-bold">VALOR A PAGAR (R$)</label>
+                <input type="number" name="valorPago" id="valorPagInput" class="form-control input-shark-dark form-control-lg text-center fw-bold text-white" step="0.01" min="0.01" required>
+              </div>
+            </div>
+            <div class="modal-footer border-0">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" onclick="limparForçado()">CANCELAR</button>
+              <button type="submit" class="btn btn-sm btn-success px-4 fw-bold">CONFIRMAR E ABATER</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
+
+  <script th:inline="javascript">
+    let saldoOsTemp = 0;
+    let saldoVendaTemp = 0;
+
+    function limparForçado() {
+      setTimeout(() => {
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = 'auto';
+      }, 300);
+    }
+
+    function popularDados(btn) {
+      limparForçado();
+      document.getElementById('idFuncModal').value = btn.getAttribute('data-id');
+      document.getElementById('nomeFuncModal').textContent = btn.getAttribute('data-nome');
+      document.getElementById('tipoFuncModal').value = btn.getAttribute('data-tipo') || 'VENDEDOR';
+      document.getElementById('osFuncModal').value = btn.getAttribute('data-com-os') || 0;
+      document.getElementById('vendaFuncModal').value = btn.getAttribute('data-com-venda') || 0;
+      new bootstrap.Modal(document.getElementById('modalComissao')).show();
+    }
+
+    function prepararPagamento(btn) {
+      limparForçado();
+      saldoOsTemp = parseFloat(btn.getAttribute('data-saldo-os'));
+      saldoVendaTemp = parseFloat(btn.getAttribute('data-saldo-venda'));
+
+      document.getElementById('idPagModal').value = btn.getAttribute('data-id');
+      document.getElementById('nomePagModal').textContent = btn.getAttribute('data-nome');
+      document.getElementById('tipoComissaoModal').value = "OS";
+
+      alternarSaldoModal();
+      new bootstrap.Modal(document.getElementById('modalPagamento')).show();
+    }
+
+    function alternarSaldoModal() {
+      const tipo = document.getElementById('tipoComissaoModal').value;
+      const label = document.getElementById('labelSaldoModal');
+      const display = document.getElementById('saldoDisponivelModal');
+      const input = document.getElementById('valorPagInput');
+
+      if(tipo === "OS") {
+        label.textContent = "SALDO O.S. DISPONÍVEL";
+        display.textContent = saldoOsTemp.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        input.value = saldoOsTemp.toFixed(2);
+      } else {
+        label.textContent = "SALDO VENDAS DISPONÍVEL";
+        display.textContent = saldoVendaTemp.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        input.value = saldoVendaTemp.toFixed(2);
+      }
+    }
+
+    function salvarConfig(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnSalvar');
+      btn.disabled = true;
+      btn.innerHTML = 'SALVANDO...';
+
+      const id = document.getElementById('idFuncModal').value;
+      const payload = new URLSearchParams();
+      payload.append('tipoFuncionario', document.getElementById('tipoFuncModal').value);
+      payload.append('comissaoOs', document.getElementById('osFuncModal').value);
+      payload.append('comissaoVenda', document.getElementById('vendaFuncModal').value);
+
+      const token = document.querySelector('meta[name="_csrf"]')?.content;
+      const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+      fetch(`/admin/funcionarios/configurar/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', [header]: token },
+        body: payload.toString()
+      }).then(res => {
+        if(res.ok) window.location.reload();
+        else alert('Erro ao salvar.');
+      }).catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = 'ATUALIZAR';
+      });
+    }
+
+    document.addEventListener('hidden.bs.modal', limparForçado);
+  </script>
 </div>
 </body>
 </html>

@@ -1,10 +1,9 @@
 package com.assistencia.controller;
 
-import com.assistencia.model.ItemVenda;
-import com.assistencia.model.Produto;
-import com.assistencia.model.Venda;
-import com.assistencia.repository.ProdutoRepository;
+import com.assistencia.model.*;
 import com.assistencia.repository.VendaRepository;
+import com.assistencia.repository.ProdutoRepository;
+import com.assistencia.repository.UsuarioRepository;
 
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -36,10 +35,12 @@ public class VendasController {
 
     private final VendaRepository vendaRepo;
     private final ProdutoRepository produtoRepo;
+    private final UsuarioRepository usuarioRepo;
 
-    public VendasController(VendaRepository vendaRepo, ProdutoRepository produtoRepo) {
+    public VendasController(VendaRepository vendaRepo, ProdutoRepository produtoRepo, UsuarioRepository usuarioRepo) {
         this.vendaRepo = vendaRepo;
         this.produtoRepo = produtoRepo;
+        this.usuarioRepo = usuarioRepo;
     }
 
     @GetMapping
@@ -73,37 +74,51 @@ public class VendasController {
                 return "redirect:/vendas";
             }
 
-            venda.setVendedor(auth != null ? auth.getName() : "Sistema Shark");
+            if (auth == null || !auth.isAuthenticated()) {
+                throw new RuntimeException("Você precisa estar logado para realizar uma venda!");
+            }
+
+            Usuario vendedorObj = usuarioRepo.findByUsername(auth.getName())
+                    .orElseThrow(() -> new RuntimeException("Vendedor logado não encontrado!"));
+
+            venda.setVendedor(vendedorObj);
+            venda.setDataHora(LocalDateTime.now());
+
+            double totalCalculado = 0.0;
 
             for (ItemVenda item : venda.getItens()) {
                 if (item.getProduto() == null || item.getProduto().getId() == null) continue;
 
                 Produto prod = produtoRepo.findById(item.getProduto().getId())
-                        .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+                        .orElseThrow(() -> new RuntimeException("Produto ID " + item.getProduto().getId() + " não encontrado"));
 
-                // 1. Validação de Estoque
                 if (prod.getQuantidade() < item.getQuantidade()) {
                     throw new RuntimeException("Estoque insuficiente para: " + prod.getNome());
                 }
 
-                // 2. Validação de Desconto (Limite Shark de 10%)
-                if (item.getDesconto() != null && item.getDesconto() > 10.1) {
-                    throw new RuntimeException("Desconto acima do permitido!");
-                }
-
-                // --- 🚀 CORREÇÃO DO SÍMBOLO ---
-                // Seta o custo unitário usando o nome correto do campo na Model Produto (precoCusto)
-                item.setCustoUnitario(prod.getPrecoCusto());
-
+                // Vincula o produto real do banco ao item
+                item.setProduto(prod);
+                item.setCustoUnitario(prod.getPrecoCusto() != null ? prod.getPrecoCusto() : 0.0);
                 item.setVenda(venda);
 
-                // 3. Baixa no estoque
+                // Recalcula o total para segurança
+                totalCalculado += item.getPrecoUnitario() * item.getQuantidade();
+
+                // Baixa no estoque
                 prod.setQuantidade(prod.getQuantidade() - item.getQuantidade());
                 produtoRepo.save(prod);
             }
 
-            // O cálculo de valorTotal e custoTotalEstoque ocorre no @PrePersist da classe Venda
+            venda.setValorTotal(totalCalculado);
             vendaRepo.save(venda);
+
+            // Processar Comissão
+            if (vendedorObj.getComissaoVenda() != null && vendedorObj.getComissaoVenda() > 0) {
+                double valorComissao = (totalCalculado * vendedorObj.getComissaoVenda()) / 100;
+                double comissaoAtual = (vendedorObj.getTotalComissaoVendasAcumulada() != null) ? vendedorObj.getTotalComissaoVendasAcumulada() : 0.0;
+                vendedorObj.setTotalComissaoVendasAcumulada(comissaoAtual + valorComissao);
+                usuarioRepo.save(vendedorObj);
+            }
 
             ra.addFlashAttribute("sucesso", "Venda realizada com sucesso!");
         } catch (Exception e) {
@@ -116,7 +131,7 @@ public class VendasController {
     @GetMapping("/pdf/{id}")
     public ResponseEntity<byte[]> gerarPdfVenda(@PathVariable Long id) {
         try {
-            Venda v = vendaRepo.findById(id).orElseThrow();
+            Venda v = vendaRepo.findById(id).orElseThrow(() -> new RuntimeException("Venda não encontrada"));
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
@@ -126,15 +141,17 @@ public class VendasController {
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm");
 
             doc.add(new Paragraph("SHARK ELETRÔNICOS").setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER));
-            doc.add(new Paragraph("Brasília - DF").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            doc.add(new Paragraph("Taguatinga - DF").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             doc.add(new Paragraph("----------------------------------------").setTextAlignment(TextAlignment.CENTER));
 
             doc.add(new Paragraph("CUPOM #" + v.getId()).setBold().setFontSize(10).setTextAlignment(TextAlignment.CENTER));
-            doc.add(new Paragraph("Data: " + v.getDataHora().format(fmt)).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            doc.add(new Paragraph("Data: " + (v.getDataHora() != null ? v.getDataHora().format(fmt) : "N/D")).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            doc.add(new Paragraph("Vendedor: " + (v.getVendedor() != null ? v.getVendedor().getNome() : "N/D")).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             doc.add(new Paragraph("----------------------------------------").setTextAlignment(TextAlignment.CENTER));
 
             for (ItemVenda item : v.getItens()) {
-                doc.add(new Paragraph(item.getQuantidade() + "x " + item.getProduto().getNome()).setFontSize(8));
+                String nomeProd = (item.getProduto() != null) ? item.getProduto().getNome() : "Produto";
+                doc.add(new Paragraph(item.getQuantidade() + "x " + nomeProd).setFontSize(8));
                 doc.add(new Paragraph("Sub: R$ " + String.format("%.2f", item.getQuantidade() * item.getPrecoUnitario())).setFontSize(7).setItalic());
             }
 
@@ -154,21 +171,34 @@ public class VendasController {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/deletar/{id}")
     public String deletar(@PathVariable Long id, RedirectAttributes ra) {
         try {
-            Venda v = vendaRepo.findById(id).orElseThrow();
-            v.getItens().forEach(i -> {
+            Venda v = vendaRepo.findById(id).orElseThrow(() -> new RuntimeException("Venda não encontrada"));
+            Usuario vendedorObj = v.getVendedor();
+
+            // 1. Estorno de comissão com proteção contra saldo negativo
+            if (vendedorObj != null && vendedorObj.getComissaoVenda() != null && vendedorObj.getComissaoVenda() > 0) {
+                double valorEstorno = (v.getValorTotal() * vendedorObj.getComissaoVenda()) / 100;
+                double saldoAtual = (vendedorObj.getTotalComissaoVendasAcumulada() != null) ? vendedorObj.getTotalComissaoVendasAcumulada() : 0.0;
+                vendedorObj.setTotalComissaoVendasAcumulada(Math.max(0.0, saldoAtual - valorEstorno));
+                usuarioRepo.save(vendedorObj);
+            }
+
+            // 2. Devolução de estoque
+            for (ItemVenda i : v.getItens()) {
                 Produto p = i.getProduto();
                 if (p != null) {
                     p.setQuantidade(p.getQuantidade() + i.getQuantidade());
                     produtoRepo.save(p);
                 }
-            });
+            }
+
             vendaRepo.delete(v);
-            ra.addFlashAttribute("sucesso", "Venda estornada e estoque devolvido!");
+            ra.addFlashAttribute("sucesso", "Venda #" + id + " estornada: Estoque e comissão atualizados!");
         } catch (Exception e) {
-            ra.addFlashAttribute("erro", "Erro ao deletar venda.");
+            ra.addFlashAttribute("erro", "Erro ao deletar venda: " + e.getMessage());
         }
         return "redirect:/vendas";
     }

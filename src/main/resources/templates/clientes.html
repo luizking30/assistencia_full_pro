@@ -27,11 +27,15 @@
         }
         .form-control { border-radius: 10px !important; }
 
-        /* Estilo para botão visualmente desabilitado mas visível */
         .btn-readonly {
             opacity: 0.5;
             cursor: not-allowed !important;
             filter: grayscale(1);
+        }
+
+        .is-invalid-shark {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5) !important;
         }
     </style>
 </head>
@@ -51,7 +55,6 @@
         <div th:if="${param.error}" class="alert alert-danger bg-dark text-danger border-danger shadow-lg">
             <i class="bi bi-shield-lock-fill me-2"></i> Acesso negado: Somente administradores podem realizar esta ação.
         </div>
-
         <div th:if="${mensagemErro}" class="alert alert-warning alert-dismissible fade show bg-dark text-warning border-warning shadow-lg" role="alert">
             <i class="bi bi-exclamation-octagon-fill me-2"></i>
             <span th:text="${mensagemErro}"></span>
@@ -69,29 +72,31 @@
                     <input type="hidden" name="id" id="clienteId">
 
                     <div class="col-md-5">
-                        <label class="form-label text-info small fw-bold mb-1">NOME COMPLETO (APENAS LETRAS)</label>
+                        <label class="form-label text-info small fw-bold mb-1 text-uppercase">Nome Completo</label>
                         <input name="nome" id="nome" class="form-control bg-black text-white border-secondary shadow-none p-2"
-                               placeholder="Ex: João da Silva" required minlength="5">
+                               placeholder="Digite para cadastrar ou filtrar..." required minlength="5">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label text-info small fw-bold mb-1">CPF (11 DÍGITOS)</label>
+                        <label class="form-label text-info small fw-bold mb-1 text-uppercase">CPF</label>
                         <input name="cpf" id="cpf" class="form-control bg-black text-white border-secondary shadow-none p-2"
                                placeholder="000.000.000-00" maxlength="14" required>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label text-info small fw-bold mb-1">WHATSAPP (11 DÍGITOS)</label>
+                        <label class="form-label text-info small fw-bold mb-1 text-uppercase">WhatsApp</label>
                         <div class="d-flex gap-2">
                             <input name="whatsapp" id="whatsapp" class="form-control bg-black text-white border-secondary shadow-none p-2"
                                    placeholder="(61) 99999-9999" maxlength="15" required>
-
-                            <button type="submit" class="btn btn-info fw-bold px-3">SALVAR</button>
+                            <button type="submit" id="btnSalvar" class="btn btn-info fw-bold px-3">SALVAR</button>
                         </div>
                     </div>
 
-                    <div class="col-12 mt-3">
+                    <div class="col-12 mt-3 d-flex justify-content-between align-items-center">
                         <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="limparFormulario()">
                             <i class="bi bi-eraser me-2"></i> Limpar Campos
                         </button>
+                        <span id="msgDuplicado" class="text-danger small fw-bold" style="display: none;">
+                            <i class="bi bi-exclamation-triangle"></i> Cadastro já existente (CPF ou WhatsApp)!
+                        </span>
                     </div>
                 </form>
             </div>
@@ -109,12 +114,12 @@
                         <th class="text-center pe-4">AÇÕES</th>
                     </tr>
                     </thead>
-                    <tbody>
-                    <tr th:each="c : ${clientes}" class="align-middle">
-                        <td class="ps-4 fw-bold text-info" th:text="'#' + ${c.id}"></td>
-                        <td class="fw-bold text-white" th:text="${c.nome}"></td>
-                        <td th:text="${c.cpf}"></td>
-                        <td>
+                    <tbody id="corpoTabela">
+                    <tr th:each="c : ${clientes}" class="align-middle linha-cliente">
+                        <td class="ps-4 fw-bold text-info td-id" th:text="'#' + ${c.id}"></td>
+                        <td class="fw-bold text-white td-nome" th:text="${c.nome}"></td>
+                        <td class="td-cpf" th:text="${c.cpf}"></td>
+                        <td class="td-whatsapp">
                             <a th:href="'https://wa.me/55' + ${#strings.replace(#strings.replace(#strings.replace(#strings.replace(c.whatsapp, '(', ''), ') ', ''), '-', ''), ' ', '')}"
                                target="_blank" class="text-success text-decoration-none fw-bold btn-link-shark">
                                 <i class="bi bi-whatsapp"></i> <span th:text="${c.whatsapp}"></span>
@@ -124,13 +129,9 @@
                             <div class="d-flex justify-content-center gap-2">
                                 <button type="button" class="btn btn-sm btn-outline-info btn-editar"
                                         th:classappend="${#authorization.expression('hasRole(''ADMIN'')')} ? '' : 'btn-readonly'"
-                                        th:data-id="${c.id}"
-                                        th:data-nome="${c.nome}"
-                                        th:data-cpf="${c.cpf}"
-                                        th:data-whatsapp="${c.whatsapp}">
+                                        th:data-id="${c.id}" th:data-nome="${c.nome}" th:data-cpf="${c.cpf}" th:data-whatsapp="${c.whatsapp}">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
-
                                 <form th:action="@{/clientes/deletar/{id}(id=${c.id})}" method="post" class="m-0 form-deletar">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
                                             th:classappend="${#authorization.expression('hasRole(''ADMIN'')')} ? '' : 'btn-readonly'">
@@ -140,9 +141,6 @@
                             </div>
                         </td>
                     </tr>
-                    <tr th:if="${#lists.isEmpty(clientes)}">
-                        <td colspan="5" class="text-center py-5 text-muted small">Nenhum cliente cadastrado.</td>
-                    </tr>
                     </tbody>
                 </table>
             </div>
@@ -151,92 +149,112 @@
 
     <script th:inline="javascript">
         const isAdmin = [[${#authorization.expression('hasRole("ADMIN")')}]];
+        const inputNome = document.getElementById("nome");
+        const inputCpf = document.getElementById("cpf");
+        const inputWhats = document.getElementById("whatsapp");
+        const btnSalvar = document.getElementById("btnSalvar");
+        const msgDuplicado = document.getElementById("msgDuplicado");
 
-        document.querySelectorAll('.btn-editar').forEach(btn => {
-            btn.addEventListener('click', function() {
-                if (!isAdmin) {
-                    alert("Ação restrita: Somente administradores podem editar clientes.");
-                    return;
-                }
-                const id = this.getAttribute('data-id');
-                const nome = this.getAttribute('data-nome');
-                const cpf = this.getAttribute('data-cpf');
-                const whatsapp = this.getAttribute('data-whatsapp');
-                document.getElementById("clienteId").value = id;
-                document.getElementById("nome").value = nome;
-                document.getElementById("cpf").value = cpf;
-                document.getElementById("whatsapp").value = whatsapp;
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                document.getElementById("nome").focus();
+        // --- BUSCA UNIVERSAL ---
+        function filtrarTabela() {
+            const termoNome = inputNome.value.toLowerCase();
+            const termoCpf = inputCpf.value.toLowerCase();
+            const termoWhats = inputWhats.value.toLowerCase();
+            const linhas = document.querySelectorAll(".linha-cliente");
+
+            linhas.forEach(linha => {
+                const txtNome = linha.querySelector(".td-nome").textContent.toLowerCase();
+                const txtCpf = linha.querySelector(".td-cpf").textContent.toLowerCase();
+                const txtWhats = linha.querySelector(".td-whatsapp").textContent.toLowerCase();
+
+                const bateNome = txtNome.includes(termoNome);
+                const bateCpf = txtCpf.includes(termoCpf);
+                const bateWhats = txtWhats.includes(termoWhats);
+
+                linha.style.display = (bateNome && bateCpf && bateWhats) ? "" : "none";
             });
-        });
-
-        document.querySelectorAll('.form-deletar').forEach(form => {
-            form.addEventListener('submit', function(e) {
-                if (!isAdmin) {
-                    e.preventDefault();
-                    alert("Ação restrita: Somente administradores podem deletar clientes.");
-                    return false;
-                }
-                return confirm('Deseja remover este cliente permanentemente?');
-            });
-        });
-
-        document.getElementById("formCliente").addEventListener("submit", function(e) {
-            const idValue = document.getElementById("clienteId").value;
-
-            // Trava para impedir edição se não for admin (ID preenchido = edição)
-            if (idValue !== "" && !isAdmin) {
-                alert("Ação restrita: Você pode cadastrar novos clientes, mas não editar os existentes.");
-                e.preventDefault();
-                return false;
-            }
-
-            const nomeValue = document.getElementById("nome").value;
-            const cpfRaw = document.getElementById("cpf").value.replace(/\D/g, "");
-            const whatsappRaw = document.getElementById("whatsapp").value.replace(/\D/g, "");
-
-            if (/\d/.test(nomeValue)) {
-                alert("O nome do cliente não pode conter números.");
-                e.preventDefault();
-                return false;
-            }
-            if (cpfRaw.length !== 11) {
-                alert("O CPF deve conter exatamente 11 dígitos.");
-                e.preventDefault();
-                return false;
-            }
-            if (whatsappRaw.length !== 11) {
-                alert("O WhatsApp deve conter o DDD + 9 dígitos.");
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        document.getElementById("nome").addEventListener("input", function(e) {
-            this.value = this.value.replace(/[0-9]/g, "");
-        });
-
-        function limparFormulario() {
-            document.getElementById("formCliente").reset();
-            document.getElementById("clienteId").value = "";
         }
 
-        document.getElementById("cpf").addEventListener("input", function(e) {
+        // --- VERIFICAÇÃO DE DUPLICIDADE ---
+        function verificarDuplicidade() {
+            const idAtual = document.getElementById("clienteId").value;
+            const cpfLimpado = inputCpf.value.trim();
+            const whatsLimpado = inputWhats.value.trim();
+            const linhas = document.querySelectorAll(".linha-cliente");
+            let existe = false;
+
+            linhas.forEach(linha => {
+                const idLinha = linha.querySelector(".td-id").textContent.replace("#", "");
+                const cpfLinha = linha.querySelector(".td-cpf").textContent.trim();
+                const whatsLinha = linha.querySelector(".td-whatsapp").textContent.trim();
+
+                if (idLinha !== idAtual) {
+                    if ((cpfLimpado !== "" && cpfLinha === cpfLimpado) ||
+                        (whatsLimpado !== "" && whatsLinha === whatsLimpado)) {
+                        existe = true;
+                    }
+                }
+            });
+
+            if (existe) {
+                inputCpf.classList.add("is-invalid-shark");
+                inputWhats.classList.add("is-invalid-shark");
+                btnSalvar.disabled = true;
+                msgDuplicado.style.display = "inline";
+            } else {
+                inputCpf.classList.remove("is-invalid-shark");
+                inputWhats.classList.remove("is-invalid-shark");
+                btnSalvar.disabled = false;
+                msgDuplicado.style.display = "none";
+            }
+        }
+
+        // Eventos
+        inputNome.addEventListener("input", function() {
+            this.value = this.value.replace(/[0-9]/g, "");
+            filtrarTabela();
+        });
+
+        inputCpf.addEventListener("input", function(e) {
             let v = e.target.value.replace(/\D/g, "");
             v = v.replace(/(\d{3})(\d)/, "$1.$2");
             v = v.replace(/(\d{3})(\d)/, "$1.$2");
             v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
             e.target.value = v;
+            filtrarTabela();
+            verificarDuplicidade();
         });
 
-        document.getElementById("whatsapp").addEventListener("input", function(e) {
+        inputWhats.addEventListener("input", function(e) {
             let v = e.target.value.replace(/\D/g, "");
             if (v.length > 0) v = "(" + v;
             if (v.length > 3) v = v.substring(0, 3) + ") " + v.substring(3);
             if (v.length > 9) v = v.substring(0, 10) + "-" + v.substring(10);
             e.target.value = v;
+            filtrarTabela();
+            verificarDuplicidade();
         });
+
+        // Botão Editar
+        document.querySelectorAll('.btn-editar').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!isAdmin) { alert("Ação restrita a Administradores."); return; }
+                document.getElementById("clienteId").value = this.getAttribute('data-id');
+                document.getElementById("nome").value = this.getAttribute('data-nome');
+                document.getElementById("cpf").value = this.getAttribute('data-cpf');
+                document.getElementById("whatsapp").value = this.getAttribute('data-whatsapp');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                verificarDuplicidade();
+                filtrarTabela();
+            });
+        });
+
+        function limparFormulario() {
+            document.getElementById("formCliente").reset();
+            document.getElementById("clienteId").value = "";
+            document.querySelectorAll(".linha-cliente").forEach(l => l.style.display = "");
+            verificarDuplicidade();
+        }
     </script>
 </div>
 </body>

@@ -4,7 +4,7 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout}">
 <head>
-    <title>Ordens de Serviço - Shark Eletrônicos</title>
+    <title>Ordens de OS - Shark Eletrônicos</title>
     <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}"/>
     <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}"/>
 
@@ -24,36 +24,58 @@
         .border-left-info { border-left-color: #0dcaf0 !important; }
         .glow-info { filter: drop-shadow(0 0 5px #0dcaf0); }
 
+        /* LISTA DE SUGESTÕES */
         .sugestoes-wrapper {
-            background-color: #121212;
-            border: 1px solid #0dcaf0;
+            background-color: #121212 !important;
+            border: 2px solid #0dcaf0 !important;
             border-radius: 0 0 10px 10px;
-            max-height: 250px;
+            max-height: 350px;
             overflow-y: auto;
-            z-index: 1100;
-            margin-top: 2px;
+            z-index: 999999 !important;
+            margin-top: 1px;
             display: none;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.9);
         }
         .suggestion-item {
             padding: 12px 15px;
             border-bottom: 1px solid #222;
-            cursor: pointer;
+            cursor: pointer !important;
             transition: all 0.2s;
             color: #ccc;
+            background-color: #121212 !important;
+            position: relative;
+            z-index: 1000001;
+            pointer-events: auto !important;
         }
         .suggestion-item:hover {
-            background-color: #0dcaf0 !important;
-            color: white !important;
+            background-color: #1a1a1a !important;
+            border-left: 3px solid #0dcaf0;
         }
+
+        .erro-cliente-msg {
+            color: #ff4444;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .form-control-plaintext.shark-info {
+            background-color: #080808 !important;
+            border: 1px solid #222 !important;
+            color: #0dcaf0 !important;
+            font-weight: bold;
+            padding: 0.75rem;
+            border-radius: 10px;
+        }
+
         .status-select-ajax {
             background-color: #000 !important;
             color: #fff !important;
             border-color: #333;
-        }
-        .btn-reset:hover {
-            background-color: #dc3545 !important;
-            color: white !important;
-            border-color: #dc3545 !important;
         }
         .form-control, .form-select {
             border-radius: 10px !important;
@@ -62,18 +84,36 @@
             box-shadow: 0 0 10px rgba(13, 202, 240, 0.3) !important;
             border-color: #0dcaf0 !important;
         }
+
+        /* ESTILOS DE FINANCEIRO PADRÃO SHARK */
+        .valor-bruto-label {
+            font-size: 0.85rem;
+            color: #28a745 !important; /* VERDE */
+            font-weight: bold;
+        }
         .gasto-pecas-label {
             display: block;
             font-size: 0.75rem;
-            color: #ff4444;
+            color: #dc3545 !important; /* VERMELHO */
             font-weight: bold;
             margin-top: 2px;
         }
         .lucro-liquido-label {
             display: block;
             font-size: 0.75rem;
-            color: #0dcaf0;
+            color: #0dcaf0 !important; /* CIANO */
             font-weight: bold;
+        }
+
+        /* ESTILO DA TRILHA DE AUDITORIA */
+        .auditoria-wrapper {
+            font-size: 0.68rem;
+            line-height: 1.2;
+            color: #777;
+        }
+        .auditoria-item i {
+            font-size: 0.75rem;
+            margin-right: 3px;
         }
     </style>
 </head>
@@ -91,21 +131,32 @@
             </div>
         </div>
 
-        <div class="card shark-card border-left-info shadow-lg mb-4" style="background: rgba(15, 23, 42, 0.6) !important;">
+        <div class="card shark-card border-left-info shadow-lg mb-4" style="background: rgba(15, 23, 42, 0.6) !important; z-index: 1000; position: relative;">
             <div class="card-header border-0 bg-transparent py-3">
                 <h5 class="card-title mb-0 text-white"><i class="bi bi-plus-lg me-2 text-info"></i>Nova O.S.</h5>
             </div>
             <div class="card-body p-4">
-                <form method="post" th:action="@{/ordens}" class="row g-3" id="formCriarOrdem">
+                <form method="post" th:action="@{/ordens}" class="row g-3" id="formCriarOrdem" style="overflow: visible;">
                     <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
                     <input type="hidden" name="status" value="Em análise">
 
-                    <div class="col-md-3 position-relative">
+                    <div class="col-md-3 position-relative" style="z-index: 1001;">
                         <label class="form-label text-info small fw-bold text-uppercase">Cliente</label>
                         <input type="text" id="inputClienteForm" class="form-control bg-black text-white border-secondary shadow-none p-3"
-                               placeholder="Buscar cliente..." autocomplete="off" required>
+                               placeholder="Clique para ver recentes..." autocomplete="off" required>
                         <input type="hidden" name="clienteId" id="clienteIdHidden">
-                        <div id="box-sugestoes-cliente" class="list-group position-absolute w-100 shadow-lg sugestoes-wrapper"></div>
+                        <div id="msgErroCliente" class="erro-cliente-msg">⚠️ Selecione um cliente da lista!</div>
+                        <div id="box-sugestoes-cliente" class="list-group sugestoes-wrapper"></div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label text-info small fw-bold text-uppercase">CPF do Cliente</label>
+                        <input type="text" id="displayCpf" class="form-control-plaintext shark-info p-3" readonly placeholder="---">
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label text-info small fw-bold text-uppercase">Contato</label>
+                        <input type="text" id="displayWhatsapp" class="form-control-plaintext shark-info p-3" readonly placeholder="---">
                     </div>
 
                     <div class="col-md-2">
@@ -119,20 +170,20 @@
                     </div>
 
                     <div class="col-md-2">
-                        <label class="form-label text-info small fw-bold text-uppercase">Valor (R$)</label>
-                        <input type="number" step="0.01" min="0" name="valor" class="form-control bg-black text-white border-secondary shadow-none p-3" placeholder="0.00" required>
+                        <label class="form-label text-info small fw-bold text-uppercase">Valor Total (R$)</label>
+                        <input type="number" step="0.01" min="0" id="inputValorTotal" name="valor" class="form-control bg-black text-white border-secondary shadow-none p-3" placeholder="0.00" required>
                     </div>
 
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-info w-100 fw-bold p-3">
-                            <i class="bi bi-check2-circle me-1"></i> SALVAR
+                            <i class="bi bi-check2-circle me-1"></i> SALVAR O.S.
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card shark-card border-left-info shadow-lg mb-4" style="background: rgba(15, 23, 42, 0.4) !important;">
+        <div class="card shark-card border-left-info shadow-lg mb-4" style="background: rgba(15, 23, 42, 0.4) !important; z-index: 1;">
             <div class="card-body p-4">
                 <h5 class="card-title mb-4 text-white">
                     <i class="bi bi-search me-2 text-info"></i>BUSCAR O.S.
@@ -157,11 +208,11 @@
                             <option value="Em análise">Em análise</option>
                             <option value="Em andamento">Em andamento</option>
                             <option value="Pronto">Pronto</option>
-                            <option value="Entregue">Entregue</option>
+                            <option value="Entregue">Entregue/Pago</option>
                         </select>
                     </div>
                     <div class="col-md-1">
-                        <button type="button" id="btnReset" class="btn btn-outline-info w-100 p-3 btn-reset">
+                        <button type="button" id="btnReset" class="btn btn-outline-info w-100 p-3">
                             <i class="bi bi-eraser-fill"></i>
                         </button>
                     </div>
@@ -169,7 +220,7 @@
             </div>
         </div>
 
-        <div class="card bg-dark border-0 shadow-sm overflow-hidden" style="border-radius: 15px; border-left: 5px solid #333 !important;">
+        <div class="card bg-dark border-0 shadow-sm overflow-hidden" style="border-radius: 15px; border-left: 5px solid #333 !important; z-index: 1;">
             <div class="table-responsive">
                 <table class="table table-hover table-dark mb-0 align-middle">
                     <thead class="bg-black text-white-50 text-uppercase small">
@@ -177,7 +228,7 @@
                         <th class="ps-4">ID / Data</th>
                         <th>Cliente</th>
                         <th>Equipamento</th>
-                        <th>Valor (Lucro Bruto)</th>
+                        <th>Financeiro (R$)</th>
                         <th>Status</th>
                         <th class="text-center">Ações</th>
                     </tr>
@@ -194,25 +245,49 @@
                         </td>
                         <td>
                             <span class="text-white" th:text="${o.produto}"></span><br>
-                            <small class="text-info" th:text="${o.defeito}"></small>
+                            <small class="text-info d-block mb-1" th:text="${o.defeito}"></small>
+
+                            <div class="auditoria-wrapper">
+                                <div class="auditoria-item text-white-50">
+                                    <i class="bi bi-person-plus text-info"></i> Aberta por: <span th:text="${o.funcionarioAbertura ?: 'Sistema'}"></span>
+                                </div>
+                                <div class="auditoria-item" th:id="'auditoria-andamento-' + ${o.id}" th:style="${o.funcionarioAndamento != null ? '' : 'display:none'}">
+                                    <i class="bi bi-play-circle text-primary"></i> Iniciada por: <span th:text="${o.funcionarioAndamento}"></span>
+                                </div>
+                                <div class="auditoria-item" th:id="'auditoria-entrega-' + ${o.id}" th:style="${o.funcionarioEntrega != null ? '' : 'display:none'}">
+                                    <i class="bi bi-check-all text-success"></i> Entregue por: <span th:text="${o.funcionarioEntrega}"></span>
+                                </div>
+                            </div>
                         </td>
                         <td>
-                            <span class="fw-bold text-success valor-total-exibido" th:text="${o.valorTotal != null ? 'R$ ' + #numbers.formatDecimal(o.valorTotal, 1, 'POINT', 2, 'COMMA') : 'R$ 0,00'}"></span>
-                            <span class="gasto-pecas-label" th:id="'gasto-pecas-' + ${o.id}"
-                                  th:text="${(o.custoPeca != null && o.custoPeca > 0) ? '- R$ ' + #numbers.formatDecimal(o.custoPeca, 1, 'POINT', 2, 'COMMA') + ' gasto de peças' : ''}"></span>
-                            <span class="lucro-liquido-label" th:id="'lucro-liquido-' + ${o.id}"
-                                  th:text="${(o.custoPeca != null && o.custoPeca > 0) ? '= R$ ' + #numbers.formatDecimal(o.valorTotal - o.custoPeca, 1, 'POINT', 2, 'COMMA') + ' lucro líquido' : ''}"></span>
+                            <div class="valor-bruto-wrapper">
+                                <span class="text-white small">Valor:</span>
+                                <span class="valor-bruto-label valor-total-exibido" th:id="'valor-total-' + ${o.id}"
+                                      th:text="${o.valorTotal != null ? 'R$ ' + #numbers.formatDecimal(o.valorTotal, 1, 'POINT', 2, 'COMMA') : 'R$ 0,00'}"></span>
+                            </div>
+
+                            <div th:id="'container-custo-' + ${o.id}" th:style="${o.custoPeca != null && o.custoPeca > 0 ? 'display:block' : 'display:none'}">
+                                <span class="text-white small">Custo:</span>
+                                <span class="gasto-pecas-label d-inline" th:id="'gasto-pecas-' + ${o.id}"
+                                      th:text="${o.custoPeca != null ? '- R$ ' + #numbers.formatDecimal(o.custoPeca, 1, 'POINT', 2, 'COMMA') : ''}"></span>
+                            </div>
+
+                            <div th:id="'container-lucro-' + ${o.id}" th:style="${o.custoPeca != null && o.custoPeca > 0 ? 'display:block' : 'display:none'}">
+                                <span class="text-white small">Lucro:</span>
+                                <span class="lucro-liquido-label d-inline" th:id="'lucro-liquido-' + ${o.id}"
+                                      th:text="${o.custoPeca != null ? '= R$ ' + #numbers.formatDecimal(o.valorTotal - o.custoPeca, 1, 'POINT', 2, 'COMMA') : ''}"></span>
+                            </div>
                         </td>
                         <td>
                             <span class="badge mb-1 d-block status-badge-text" th:id="'badge-' + ${o.id}" th:text="${o.status}"
                                   th:classappend="${o.status == 'Em análise' ? 'bg-warning text-dark' : (o.status == 'Em andamento' ? 'bg-primary' : (o.status == 'Pronto' ? 'bg-info text-dark' : 'bg-success'))}">
                             </span>
                             <select class="form-select form-select-sm status-select-ajax shadow-none"
-                                    th:attr="data-id=${o.id}, data-status-atual=${o.status}">
-                                <option value="Em análise" th:selected="${o.status == 'Em análise'}">Em análise</option>
-                                <option value="Em andamento" th:selected="${o.status == 'Em andamento'}">Em andamento</option>
-                                <option value="Pronto" th:selected="${o.status == 'Pronto'}">Pronto</option>
-                                <option value="Entregue" th:selected="${o.status == 'Entregue'}">Entregue</option>
+                                    th:attr="data-id=${o.id}, data-status-atual=${o.status}, data-valor-total=${o.valorTotal}">
+                                <option value="Em análise" th:selected="${o.status == 'Em análise'}" th:disabled="${o.status != 'Em análise'}">Em análise</option>
+                                <option value="Em andamento" th:selected="${o.status == 'Em andamento'}" th:disabled="${o.status != 'Em análise' && o.status != 'Em andamento'}">Em andamento</option>
+                                <option value="Pronto" th:selected="${o.status == 'Pronto'}" th:disabled="${o.status != 'Em andamento' && o.status != 'Pronto'}">Pronto</option>
+                                <option value="Entregue" th:selected="${o.status == 'Entregue'}" th:disabled="${o.status != 'Pronto' && o.status != 'Entregue'}">Entregue/Pago</option>
                             </select>
                         </td>
                         <td class="text-center">
@@ -222,9 +297,6 @@
                                 </a>
                                 <button sec:authorize="hasRole('ADMIN')" class="btn btn-sm btn-outline-danger p-2 btn-deletar" th:attr="data-id=${o.id}">
                                     <i class="bi bi-trash"></i>
-                                </button>
-                                <button sec:authorize="!hasRole('ADMIN')" class="btn btn-sm btn-outline-secondary p-2" disabled title="Ação restrita ao Admin">
-                                    <i class="bi bi-lock"></i>
                                 </button>
                             </div>
                         </td>
@@ -236,22 +308,20 @@
     </div>
 
     <script th:inline="javascript">
-        // Variável de controle vinda do servidor
-        const isAdmin = [[${#authorization.expression('hasRole("ADMIN")')}]];
-
         document.addEventListener('DOMContentLoaded', function() {
             const token = document.querySelector('meta[name="_csrf"]')?.content;
             const header = document.querySelector('meta[name="_csrf_header"]')?.content;
 
-            // --- AUTOCOMPLETE CLIENTE ---
             const inputCli = document.getElementById('inputClienteForm');
             const hiddenCliId = document.getElementById('clienteIdHidden');
             const boxCli = document.getElementById('box-sugestoes-cliente');
+            const displayCpf = document.getElementById('displayCpf');
+            const displayWhatsapp = document.getElementById('displayWhatsapp');
+            const formOS = document.getElementById('formCriarOrdem');
+            const msgErro = document.getElementById('msgErroCliente');
 
-            inputCli.addEventListener('input', function() {
-                const termo = this.value.trim();
-                hiddenCliId.value = '';
-                if (termo.length < 2) { boxCli.style.display = 'none'; return; }
+            // --- BUSCA DE CLIENTES (AUTOCOMPLETE) ---
+            function buscarClientes(termo = "") {
                 fetch(`/clientes/sugestoes?termo=${encodeURIComponent(termo)}`)
                     .then(res => res.json())
                     .then(data => {
@@ -260,38 +330,98 @@
                             data.forEach(c => {
                                 const div = document.createElement('div');
                                 div.className = 'suggestion-item';
-                                div.innerHTML = `<strong>${c.nome}</strong>`;
-                                div.onclick = () => {
+                                div.innerHTML = `
+                                    <div class="fw-bold text-info">${c.nome}</div>
+                                    <div class="d-flex gap-3" style="font-size: 0.75rem; margin-top: 2px;">
+                                        <span class="text-muted"><i class="bi bi-card-text me-1"></i>${c.cpf || 'Sem CPF'}</span>
+                                        <span style="color: #25D366;"><i class="bi bi-whatsapp me-1"></i>${c.whatsapp || 'Sem contato'}</span>
+                                    </div>
+                                `;
+                                div.addEventListener('mousedown', function(e) {
+                                    e.preventDefault();
                                     inputCli.value = c.nome;
                                     hiddenCliId.value = c.id;
+                                    displayCpf.value = c.cpf || 'Não informado';
+                                    displayWhatsapp.value = c.whatsapp || 'Não informado';
                                     boxCli.style.display = 'none';
-                                };
+                                    msgErro.style.display = 'none';
+                                    inputCli.style.borderColor = '';
+                                });
                                 boxCli.appendChild(div);
                             });
                             boxCli.style.display = 'block';
+                        } else {
+                            boxCli.style.display = 'none';
                         }
                     });
+            }
+
+            inputCli.addEventListener('focus', () => buscarClientes(inputCli.value.trim()));
+            inputCli.addEventListener('input', () => {
+                hiddenCliId.value = '';
+                displayCpf.value = '---';
+                displayWhatsapp.value = '---';
+                buscarClientes(inputCli.value.trim());
+            });
+            inputCli.addEventListener('blur', () => setTimeout(() => boxCli.style.display = 'none', 200));
+
+            formOS.addEventListener('submit', function(e) {
+                if (!hiddenCliId.value) {
+                    e.preventDefault();
+                    msgErro.style.display = 'block';
+                    inputCli.style.borderColor = '#ff4444';
+                    inputCli.focus();
+                }
             });
 
-            // --- MUDANÇA DE STATUS (AJAX) ---
+            // --- LÓGICA DE ALTERAÇÃO DE STATUS E CÁLCULO DE LUCRO ---
             document.querySelectorAll('.status-select-ajax').forEach(select => {
+                // Roles do usuário para controle via JS
+                const isAdmin = [[${#authorization.expression('hasRole(''ADMIN'')')}]];
+                const isTecnico = [[${#authorization.expression('hasRole(''TECNICO'')')}]];
+                const podeOperarLaboratorio = isAdmin || isTecnico;
+
                 select.addEventListener('change', function() {
                     const id = this.getAttribute('data-id');
-                    const statusBloqueado = this.getAttribute('data-status-atual');
+                    const statusAtual = this.getAttribute('data-status-atual');
                     const novoStatus = this.value;
-                    const badgeAntigo = document.getElementById('badge-' + id);
+                    const valorTotal = parseFloat(this.getAttribute('data-valor-total')) || 0;
+                    const badge = document.getElementById('badge-' + id);
 
-                    if (statusBloqueado === 'Entregue') {
-                        alert("O.S. finalizada! Não é possível alterar o status de uma ordem já entregue.");
+                    // 1. Validar Permissão de Perfil
+                    if ((novoStatus === 'Em andamento' || novoStatus === 'Pronto') && !podeOperarLaboratorio) {
+                        alert("Somente Técnicos ou Admins podem alterar para 'Em andamento' ou 'Pronto'.");
+                        this.value = statusAtual;
+                        return;
+                    }
+
+                    // 2. Validar Hierarquia (Não pode pular, não pode voltar)
+                    const hierarquia = ['Em análise', 'Em andamento', 'Pronto', 'Entregue'];
+                    const idxAtual = hierarquia.indexOf(statusAtual);
+                    const idxNovo = hierarquia.indexOf(novoStatus);
+
+                    if (idxNovo < idxAtual) {
+                        alert("Não é permitido retroceder o status da O.S.");
+                        this.value = statusAtual;
+                        return;
+                    }
+                    if (idxNovo > idxAtual + 1) {
+                        alert(`A O.S. deve passar por "${hierarquia[idxAtual + 1]}" antes.`);
+                        this.value = statusAtual;
+                        return;
+                    }
+
+                    if (statusAtual === 'Entregue') {
+                        alert("Esta O.S. já foi finalizada!");
                         this.value = 'Entregue';
                         return;
                     }
 
                     let custoPeca = 0;
                     if (novoStatus === 'Entregue') {
-                        const resposta = prompt("Gasto com peças (R$):", "0.00");
+                        const resposta = prompt("Informe o gasto com peças para calcular o lucro líquido (R$):", "0.00");
                         if (resposta === null) {
-                            this.value = statusBloqueado;
+                            this.value = statusAtual;
                             return;
                         }
                         custoPeca = parseFloat(resposta.replace(',', '.')) || 0;
@@ -306,53 +436,42 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded', [header]: token },
                         body: params.toString()
-                    }).then(res => res.json()).then(data => {
-                        if(data.success) {
-                            badgeAntigo.textContent = data.novoStatus;
-                            badgeAntigo.className = 'badge mb-1 d-block status-badge-text ' + getBadgeClass(data.novoStatus);
-                            this.setAttribute('data-status-atual', data.novoStatus);
-                            const row = this.closest('tr');
-                            const valorExibido = row.querySelector('.valor-total-exibido');
-                            const gastoLabel = document.getElementById('gasto-pecas-' + id);
-                            const lucroLabel = document.getElementById('lucro-liquido-' + id);
-                            let valorBruto = data.novoValor || parseFloat(valorExibido.innerText.replace('R$', '').replace('.', '').replace(',', '.')) || 0;
-                            valorExibido.innerText = "R$ " + valorBruto.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if(data.success) {
+                                badge.textContent = data.novoStatus;
+                                badge.className = 'badge mb-1 d-block status-badge-text ' + getBadgeClass(data.novoStatus);
+                                this.setAttribute('data-status-atual', data.novoStatus);
 
-                            if (custoPeca > 0 && novoStatus === 'Entregue') {
-                                gastoLabel.innerText = "- R$ " + custoPeca.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " gasto de peças";
-                                let lucroLiquido = valorBruto - custoPeca;
-                                lucroLabel.innerText = "= R$ " + lucroLiquido.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " lucro líquido";
-                            } else {
-                                gastoLabel.innerText = "";
-                                lucroLabel.innerText = "";
-                            }
-                        }
-                    });
-                });
-            });
+                                // ATUALIZAÇÃO DA TRILHA DE FUNCIONÁRIOS (DOM)
+                                if (data.novoStatus === 'Em andamento') {
+                                    const divAnd = document.getElementById('auditoria-andamento-' + id);
+                                    if(divAnd) {
+                                        divAnd.style.display = 'block';
+                                        divAnd.querySelector('span').textContent = data.funcionario;
+                                    }
+                                }
 
-            // --- FUNÇÃO DELETAR COM TRAVA JS ---
-            document.querySelectorAll('.btn-deletar').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (!isAdmin) {
-                        alert("Ação negada: Apenas o administrador da Shark Eletrônicos pode excluir ordens.");
-                        return;
-                    }
-                    const id = this.getAttribute('data-id');
-                    if (confirm(`Deseja realmente excluir a O.S. #${id}? Esta ação não pode ser desfeita.`)) {
-                        fetch(`/ordens/deletar/${id}`, {
-                            method: 'DELETE',
-                            headers: { [header]: token }
-                        }).then(res => {
-                            if (res.ok) {
-                                this.closest('tr').remove();
-                            } else if (res.status === 403) {
-                                alert("Você não possui permissão administrativa para deletar.");
-                            } else {
-                                alert("Erro ao deletar O.S.");
+                                if(data.novoStatus === 'Entregue') {
+                                    const divEnt = document.getElementById('auditoria-entrega-' + id);
+                                    if(divEnt) {
+                                        divEnt.style.display = 'block';
+                                        divEnt.querySelector('span').textContent = data.funcionario;
+                                    }
+
+                                    if(custoPeca >= 0) {
+                                        const lucro = valorTotal - custoPeca;
+                                        document.getElementById('container-custo-' + id).style.display = 'block';
+                                        document.getElementById('container-lucro-' + id).style.display = 'block';
+                                        document.getElementById('gasto-pecas-' + id).textContent = `- R$ ${custoPeca.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                                        document.getElementById('lucro-liquido-' + id).textContent = `= R$ ${lucro.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                                    }
+                                }
+                                // Recarrega para aplicar os th:disabled do select baseados no novo status
+                                location.reload();
                             }
                         });
-                    }
                 });
             });
 
@@ -361,30 +480,36 @@
                 return c[s] || 'bg-secondary';
             }
 
-            // --- FILTRO DE BUSCA ---
+            // --- FILTROS E DELETE ---
+            document.querySelectorAll('.btn-deletar').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    if (confirm(`Excluir permanentemente a O.S. #${id}?`)) {
+                        fetch(`/ordens/deletar/${id}`, { method: 'DELETE', headers: { [header]: token } })
+                            .then(res => { if (res.ok) this.closest('tr').remove(); });
+                    }
+                });
+            });
+
             const buscaId = document.getElementById('buscaId');
             const buscaNome = document.getElementById('buscaNome');
             const buscaStatus = document.getElementById('buscaStatus');
-            const btnReset = document.getElementById('btnReset');
 
             function filtrar() {
                 const vId = buscaId.value.trim().replace('#', '').toLowerCase();
                 const vNome = buscaNome.value.trim().toLowerCase();
                 const vStatus = buscaStatus.value.toLowerCase();
+
                 document.querySelectorAll('.ordem-row').forEach(row => {
                     const rId = row.querySelector('.os-id-label').innerText.replace('#', '').toLowerCase();
                     const rNome = row.querySelector('.cliente-nome-col').innerText.toLowerCase();
                     const rStatus = row.querySelector('.status-badge-text').innerText.toLowerCase();
-                    const matchId = vId === "" || rId === vId;
-                    const matchNome = vNome === "" || rNome.includes(vNome);
-                    const matchStatus = vStatus === "" || rStatus === vStatus;
-                    row.style.display = (matchId && matchNome && matchStatus) ? "" : "none";
+                    row.style.display = ((vId === "" || rId === vId) && (vNome === "" || rNome.includes(vNome)) && (vStatus === "" || rStatus === vStatus)) ? "" : "none";
                 });
             }
-
             [buscaId, buscaNome, buscaStatus].forEach(el => el.addEventListener('input', filtrar));
-            btnReset.addEventListener('click', () => {
-                buscaId.value = ''; buscaNome.value = ''; buscaStatus.value = '';
+            document.getElementById('btnReset').addEventListener('click', () => {
+                [buscaId, buscaNome, buscaStatus].forEach(el => el.value = "");
                 filtrar();
             });
         });

@@ -16,26 +16,51 @@ public class Usuario {
     private String username;
 
     @Column(nullable = false)
-    private String password; // Alterado para 'password' (padrão Spring Security)
+    private String password;
 
-    private String role; // "ROLE_ADMIN" ou "ROLE_FUNCIONARIO"
+    private String role; // Ex: ROLE_ADMIN, ROLE_FUNCIONARIO
 
     @Column(nullable = false)
-    private boolean aprovado = false; // Novo: Controla a fila de espera (Inicia como falso)
+    private boolean aprovado = false;
+
+    // Define a função na Shark: "VENDEDOR", "TECNICO" ou "HIBRIDO"
+    @Column(length = 20)
+    private String tipoFuncionario;
+
+    // --- TAXAS DE PERCENTUAL (Configuradas no modal) ---
+    @Column(nullable = false)
+    private Double comissaoOs = 0.0;
+
+    @Column(nullable = false)
+    private Double comissaoVenda = 0.0;
+
+    // --- VALORES ACUMULADOS (Exibidos na tabela "A RECEBER") ---
+    @Column(nullable = false)
+    private Double totalComissaoOsAcumulada = 0.0;
+
+    @Column(nullable = false)
+    private Double totalComissaoVendasAcumulada = 0.0;
+
+    // --- MÉTODO PARA O THYMELEAF (RESOLVE O ERRO DE SALDO TOTAL) ---
+    public Double getSaldoTotalReceber() {
+        Double os = (totalComissaoOsAcumulada != null) ? totalComissaoOsAcumulada : 0.0;
+        Double vendas = (totalComissaoVendasAcumulada != null) ? totalComissaoVendasAcumulada : 0.0;
+        return os + vendas;
+    }
 
     // --- CONSTRUTORES ---
     public Usuario() {}
 
-    public Usuario(String nome, String username, String password, String role, boolean aprovado) {
+    public Usuario(String nome, String username, String password, String role, boolean aprovado, String tipoFuncionario) {
         this.nome = nome;
         this.username = username;
         this.password = password;
         this.role = role;
         this.aprovado = aprovado;
+        this.tipoFuncionario = tipoFuncionario;
     }
 
     // --- GETTERS E SETTERS ---
-
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -53,4 +78,19 @@ public class Usuario {
 
     public boolean isAprovado() { return aprovado; }
     public void setAprovado(boolean aprovado) { this.aprovado = aprovado; }
+
+    public String getTipoFuncionario() { return tipoFuncionario; }
+    public void setTipoFuncionario(String tipoFuncionario) { this.tipoFuncionario = tipoFuncionario; }
+
+    public Double getComissaoOs() { return comissaoOs; }
+    public void setComissaoOs(Double comissaoOs) { this.comissaoOs = comissaoOs; }
+
+    public Double getComissaoVenda() { return comissaoVenda; }
+    public void setComissaoVenda(Double comissaoVenda) { this.comissaoVenda = comissaoVenda; }
+
+    public Double getTotalComissaoOsAcumulada() { return totalComissaoOsAcumulada; }
+    public void setTotalComissaoOsAcumulada(Double totalComissaoOsAcumulada) { this.totalComissaoOsAcumulada = totalComissaoOsAcumulada; }
+
+    public Double getTotalComissaoVendasAcumulada() { return totalComissaoVendasAcumulada; }
+    public void setTotalComissaoVendasAcumulada(Double totalComissaoVendasAcumulada) { this.totalComissaoVendasAcumulada = totalComissaoVendasAcumulada; }
 }

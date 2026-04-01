@@ -158,8 +158,10 @@
         <li class="nav-item"><a class="nav-link" th:href="@{/vendas}"><i class="bi bi-cart-check"></i> Vendas</a></li>
         <li class="nav-item"><a class="nav-link" th:href="@{/relatorios}"><i class="bi bi-file-earmark-bar-graph"></i> Relatórios</a></li>
 
+        <li class="nav-item"><a class="nav-link" th:href="@{/meus-ganhos}"><i class="bi bi-wallet2"></i> Meus Ganhos</a></li>
+
         <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-          <a class="nav-link" th:href="@{/funcionarios}" style="color: var(--shark-light-blue) !important;">
+          <a class="nav-link" th:href="@{/admin/funcionarios}" style="color: var(--shark-light-blue) !important;">
             <i class="bi bi-shield-lock"></i> Funcionários
           </a>
         </li>
@@ -168,7 +170,8 @@
       <div class="d-flex align-items-center gap-3">
         <div class="text-end d-none d-lg-block" sec:authorize="isAuthenticated()">
           <small class="d-block text-uppercase fw-bold" style="font-size: 0.65rem; color: var(--shark-light-blue); letter-spacing: 1px;">
-            <span sec:authentication="principal.authorities">ROLE</span>
+            <span th:if="${usuarioLogado != null}" th:text="${usuarioLogado.tipoFuncionario}">TIPO</span>
+            <span th:unless="${usuarioLogado != null}" sec:authentication="principal.authorities">ROLE</span>
           </small>
           <span style="color: #94a3b8; font-weight: 500; font-size: 0.8rem;">Bem-vindo,</span>
           <span class="text-white fw-bold" style="text-shadow: 0 0 5px rgba(0, 212, 255, 0.4);" sec:authentication="name">Usuário</span>

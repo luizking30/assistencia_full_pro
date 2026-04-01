@@ -1,32 +1,28 @@
 package com.assistencia.controller;
 
-import com.assistencia.model.PagamentoComissao;
+import com.assistencia.model.OrdemServico;
 import com.assistencia.model.Usuario;
 import com.assistencia.model.Venda;
-import com.assistencia.model.OrdemServico;
-import com.assistencia.repository.UsuarioRepository;
-import com.assistencia.repository.OrdemServicoRepository;
-import com.assistencia.repository.VendaRepository;
-import com.assistencia.repository.PagamentoComissaoRepository;
 import com.assistencia.repository.ClienteRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.assistencia.repository.OrdemServicoRepository;
+import com.assistencia.repository.PagamentoComissaoRepository;
+import com.assistencia.repository.UsuarioRepository;
+import com.assistencia.repository.VendaRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.HashMap;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 @Controller
 @RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
-
-    private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
     private final ClienteRepository clienteRepo;
     private final OrdemServicoRepository ordemRepo;
@@ -47,84 +43,94 @@ public class AdminController {
     @GetMapping("/funcionarios")
     public String listarEquipe(Model model) {
         List<Usuario> usuarios = usuarioRepo.findAll();
-        List<PagamentoComissao> pagamentos = pagamentoRepo.findAll();
-
-        // Busca todas as Ordens e Vendas para processar em memória
         List<OrdemServico> todasOrdens = ordemRepo.findAll();
         List<Venda> todasVendas = vendaRepo.findAll();
 
-        Map<Long, Double> totalServicos = new HashMap<>();
-        Map<Long, Double> totalVendas = new HashMap<>();
-
         for (Usuario u : usuarios) {
             final String nomeUsuarioDb = (u.getNome() != null) ? u.getNome().trim() : "";
+            final Long idUsuario = u.getId();
 
-            // 1. CÁLCULO COMISSÃO O.S. (TÉCNICO)
-            double comissaoTecnico = todasOrdens.stream()
-                    .filter(os -> "Entregue".equalsIgnoreCase(os.getStatus())) // Verifique se no banco está "Entregue"
+            // 1. CÁLCULO VENDAS COM BIGDECIMAL 📈
+            List<Venda> vendasDesteU = todasVendas.stream()
+                    .filter(v -> v.getVendedor() != null && Objects.equals(v.getVendedor().getId(), idUsuario))
+                    .toList();
+
+            BigDecimal faturamentoBruto = vendasDesteU.stream()
+                    .map(v -> BigDecimal.valueOf(v.getValorTotal() != null ? v.getValorTotal() : 0.0))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal taxaVenda = BigDecimal.valueOf(u.getComissaoVenda() != null ? u.getComissaoVenda() : 0.0);
+
+            // Conta: (Faturamento * Taxa) / 100
+            BigDecimal comissaoGeradaVenda = faturamentoBruto.multiply(taxaVenda)
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+            // 2. CÁLCULO O.S. COM BIGDECIMAL 🛠️
+            BigDecimal comissaoGeradaOs = todasOrdens.stream()
                     .filter(os -> {
-                        String funcOS = os.getFuncionarioAndamento();
-                        boolean bate = funcOS != null && funcOS.trim().equalsIgnoreCase(nomeUsuarioDb);
-                        if (bate) {
-                            System.out.println("DEBUG: OS #" + os.getId() + " vinculada ao técnico " + nomeUsuarioDb);
-                        }
-                        return bate;
+                        String status = os.getStatus();
+                        boolean concluida = "Entregue".equalsIgnoreCase(status) || "Concluído".equalsIgnoreCase(status);
+                        boolean mesmoFuncionario = os.getFuncionarioAndamento() != null &&
+                                os.getFuncionarioAndamento().trim().equalsIgnoreCase(nomeUsuarioDb);
+                        return concluida && mesmoFuncionario;
                     })
-                    .mapToDouble(os -> {
-                        double valorTotal = os.getValorTotal() != null ? os.getValorTotal() : 0.0;
-                        double custoPeca = os.getCustoPeca() != null ? os.getCustoPeca() : 0.0;
-                        double percentualOS = u.getComissaoOs() != null ? u.getComissaoOs() : 0.0;
-
-                        // Cálculo sobre o lucro bruto (Serviço)
-                        return (valorTotal - custoPeca) * (percentualOS / 100.0);
+                    .map(os -> {
+                        BigDecimal valorOs = BigDecimal.valueOf(os.getValorTotal() != null ? os.getValorTotal() : 0.0);
+                        BigDecimal custoPeca = BigDecimal.valueOf(os.getCustoPeca() != null ? os.getCustoPeca() : 0.0);
+                        BigDecimal taxaOs = BigDecimal.valueOf(u.getComissaoOs() != null ? u.getComissaoOs() : 0.0);
+                        // (Total - Peça) * Taxa / 100
+                        return valorOs.subtract(custoPeca)
+                                .multiply(taxaOs)
+                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
                     })
-                    .sum();
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // 2. CÁLCULO COMISSÃO VENDAS (VENDEDOR)
-            double comissaoVendaBalcao = todasVendas.stream()
-                    .filter(v -> v.getVendedor() != null && v.getVendedor().getId().equals(u.getId()))
-                    .mapToDouble(v -> {
-                        double valorVenda = v.getValorTotal() != null ? v.getValorTotal() : 0.0;
-                        double percentualVen = u.getComissaoVenda() != null ? u.getComissaoVenda() : 0.0;
-                        return valorVenda * (percentualVen / 100.0);
-                    })
-                    .sum();
+            // 3. ABATIMENTO DE PAGAMENTOS
+            BigDecimal valorPagoOS = BigDecimal.valueOf(Objects.requireNonNullElse(pagamentoRepo.somarPorFuncionarioETipo(idUsuario, "OS"), 0.0));
+            BigDecimal valorPagoVenda = BigDecimal.valueOf(Objects.requireNonNullElse(pagamentoRepo.somarPorFuncionarioETipo(idUsuario, "VENDA"), 0.0));
 
-            totalServicos.put(u.getId(), comissaoTecnico);
-            totalVendas.put(u.getId(), comissaoVendaBalcao);
+            // Saldo Final (Garante que não seja negativo)
+            BigDecimal saldoFinalVenda = comissaoGeradaVenda.subtract(valorPagoVenda).max(BigDecimal.ZERO);
+            BigDecimal saldoFinalOS = comissaoGeradaOs.subtract(valorPagoOS).max(BigDecimal.ZERO);
+
+            // 🚀 SETANDO NOS CAMPOS TRANSIENTES (Convertendo de volta para double para o HTML)
+            u.setBrutoVendaCalculado(faturamentoBruto.doubleValue());
+            u.setSaldoVendaCalculado(saldoFinalVenda.doubleValue());
+            u.setTotalComissaoOsAcumulada(saldoFinalOS.doubleValue());
+
+            // LOG DE PRECISÃO NO CONSOLE
+            System.out.println(">>> [SHARK PRECISION] Funcionário: " + nomeUsuarioDb);
+            System.out.println("    Faturamento: " + faturamentoBruto + " | Comissão: " + saldoFinalVenda);
         }
 
         model.addAttribute("usuarios", usuarios);
-        model.addAttribute("pagamentos", pagamentos);
-        model.addAttribute("totalServicos", totalServicos);
-        model.addAttribute("totalVendas", totalVendas);
+        model.addAttribute("pagamentos", pagamentoRepo.findTop10ByOrderByDataHoraDesc());
 
         return "funcionarios";
     }
 
     @PostMapping("/funcionarios/configurar/{id}")
     public String configurarFuncionario(@PathVariable Long id,
-                                        @RequestParam("tipoFuncionario") String tipo,
+                                        @RequestParam("tipoFuncionario") String tipoFuncionario,
                                         @RequestParam("comissaoOs") Double comissaoOs,
                                         @RequestParam("comissaoVenda") Double comissaoVenda,
                                         RedirectAttributes ra) {
-
-        usuarioRepo.findById(id).ifPresent(usuario -> {
-            usuario.setTipoFuncionario(tipo);
-            usuario.setComissaoOs(comissaoOs);
-            usuario.setComissaoVenda(comissaoVenda);
-            usuarioRepo.save(usuario);
-            ra.addFlashAttribute("mensagem", "Configurações de " + usuario.getNome() + " atualizadas!");
+        usuarioRepo.findById(id).ifPresent(u -> {
+            u.setTipoFuncionario(tipoFuncionario);
+            u.setComissaoOs(comissaoOs);
+            u.setComissaoVenda(comissaoVenda);
+            usuarioRepo.save(u);
+            ra.addFlashAttribute("mensagem", "Configurações de " + u.getNome() + " atualizadas!");
         });
         return "redirect:/admin/funcionarios";
     }
 
     @PostMapping("/funcionarios/aprovar/{id}")
     public String aprovarFuncionario(@PathVariable Long id, RedirectAttributes ra) {
-        usuarioRepo.findById(id).ifPresent(usuario -> {
-            usuario.setAprovado(true);
-            usuarioRepo.save(usuario);
-            ra.addFlashAttribute("mensagem", "Funcionário " + usuario.getNome() + " aprovado!");
+        usuarioRepo.findById(id).ifPresent(u -> {
+            u.setAprovado(true);
+            usuarioRepo.save(u);
+            ra.addFlashAttribute("mensagem", "Funcionário " + u.getNome() + " aprovado!");
         });
         return "redirect:/admin/funcionarios";
     }
@@ -138,7 +144,6 @@ public class AdminController {
         return "redirect:/admin/funcionarios";
     }
 
-    // Métodos para deleção de clientes e ordens (ajustados para as rotas corretas)
     @PostMapping("/cliente/deletar/{id}")
     public String deletarCliente(@PathVariable Long id, RedirectAttributes ra) {
         clienteRepo.deleteById(id);

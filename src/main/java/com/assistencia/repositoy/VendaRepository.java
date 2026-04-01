@@ -13,35 +13,31 @@ import java.util.List;
 public interface VendaRepository extends JpaRepository<Venda, Long> {
 
     // --- RELATÓRIOS E DASHBOARD ---
-
-    // Retorna a LISTA de vendas para preencher as tabelas do histórico/relatório
     List<Venda> findByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
-
-    // Conta a quantidade de vendas (Para o card "Vendas Feitas")
     long countByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
 
-    // 1. SOMA o faturamento BRUTO de vendas do dia
     @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
     Double somarVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
-    // 2. Soma o CUSTO total de estoque das vendas (Para calcular lucro real)
     @Query("SELECT COALESCE(SUM(v.custoTotalEstoque), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
     Double somarCustoEstoqueDasVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
 
-
     // --- SISTEMA DE COMISSÃO ---
-
-    // Busca todas as vendas de um vendedor específico que ainda não tiveram a comissão paga
     List<Venda> findByVendedorIdAndPagoFalse(Long vendedorId);
 
-    // Soma o valor total de vendas pendentes de um vendedor para o cálculo do pagamento
     @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v WHERE v.vendedor.id = :vendedorId AND v.pago = false")
     Double somarTotalVendasPendentesPorVendedor(@Param("vendedorId") Long vendedorId);
 
+    // --- NOVOS MÉTODOS PARA A BUSCA DINÂMICA (AJAX) ---
 
-    // --- BUSCAS FILTRADAS ---
+    /**
+     * Busca por nome do vendedor (ignora maiúsculas/minúsculas) e período de tempo.
+     */
+    List<Venda> findByVendedorNomeContainingIgnoreCaseAndDataHoraBetween(String nome, LocalDateTime inicio, LocalDateTime fim);
 
-    // CORREÇÃO: Navegando de Item (i) -> Produto -> Nome
+    /**
+     * Busca por produtos (Já existente no seu código)
+     */
     @Query("SELECT DISTINCT v FROM Venda v JOIN v.itens i WHERE i.produto.nome LIKE %:nome%")
     List<Venda> findByNomeProduto(@Param("nome") String nome);
 }

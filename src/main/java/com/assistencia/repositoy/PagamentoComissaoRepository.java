@@ -10,12 +10,18 @@ import java.util.List;
 @Repository
 public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComissao, Long> {
 
+    /**
+     * Busca a lista de pagamentos de um funcionário.
+     * Necessário para o AdminController processar a lista via Stream.
+     */
+    List<PagamentoComissao> findByFuncionarioId(Long funcionarioId);
+
     // Soma histórica de pagamentos para um funcionário específico (Total Geral)
     @Query("SELECT COALESCE(SUM(p.valorPago), 0.0) FROM PagamentoComissao p WHERE p.funcionarioId = :id")
     Double somarTotalPagoAoFuncionario(@Param("id") Long id);
 
     /**
-     * NOVO MÉTODO: Soma pagamentos filtrando por tipo (OS ou VENDA).
+     * Soma pagamentos filtrando por tipo (OS ou VENDA).
      * Essencial para que o abatimento ocorra na coluna separada na Shark Eletrônicos.
      */
     @Query("SELECT COALESCE(SUM(p.valorPago), 0.0) FROM PagamentoComissao p " +

@@ -376,10 +376,10 @@
 
             // --- LÓGICA DE ALTERAÇÃO DE STATUS E CÁLCULO DE LUCRO ---
             document.querySelectorAll('.status-select-ajax').forEach(select => {
-                // Roles do usuário para controle via JS
+                // Roles e Tipo do usuário para controle via JS
                 const isAdmin = [[${#authorization.expression('hasRole(''ADMIN'')')}]];
-                const isTecnico = [[${#authorization.expression('hasRole(''TECNICO'')')}]];
-                const podeOperarLaboratorio = isAdmin || isTecnico;
+                const tipoFuncionario = [[${usuarioLogado != null ? usuarioLogado.tipoFuncionario : ''}]];
+                const podeOperarLaboratorio = isAdmin || tipoFuncionario === 'TECNICO' || tipoFuncionario === 'HIBRIDO';
 
                 select.addEventListener('change', function() {
                     const id = this.getAttribute('data-id');
@@ -390,7 +390,7 @@
 
                     // 1. Validar Permissão de Perfil
                     if ((novoStatus === 'Em andamento' || novoStatus === 'Pronto') && !podeOperarLaboratorio) {
-                        alert("Somente Técnicos ou Admins podem alterar para 'Em andamento' ou 'Pronto'.");
+                        alert("Acesso negado: Somente técnicos ou administradores podem iniciar ou finalizar serviços.");
                         this.value = statusAtual;
                         return;
                     }

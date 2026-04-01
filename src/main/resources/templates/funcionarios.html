@@ -3,23 +3,87 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout}">
 <head>
-  <title>Gestão de Equipe - Shark Eletrônicos</title>
+  <title>Comissão de Funcionarios</title>
   <meta th:if="${_csrf}" name="_csrf" th:content="${_csrf.token}"/>
   <meta th:if="${_csrf}" name="_csrf_header" th:content="${_csrf.headerName}"/>
 
   <style>
-    .shark-card-admin { background: rgba(15, 23, 42, 0.7); border-radius: 15px; border-left: 5px solid #0dcaf0; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
-    .table-admin thead { background-color: #000; color: #0dcaf0; font-size: 0.75rem; letter-spacing: 1px; }
-    .modal-shark { background: rgba(10, 15, 28, 0.98) !important; border: 1px solid #0dcaf0 !important; border-radius: 15px !important; backdrop-filter: blur(15px); color: white; }
-    .input-shark-dark { background-color: #000 !important; border: 1px solid #333 !important; color: #fff !important; }
-    .role-badge { font-size: 0.65rem; padding: 3px 8px; border-radius: 5px; font-weight: 800; letter-spacing: 0.5px; }
-    .role-tecnico { background: #6610f2; color: #fff; }
-    .role-vendedor { background: #0d6efd; color: #fff; }
-    .val-receber { font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9rem; }
-    .modal { background: rgba(0, 0, 0, 0.6); }
+    /* DESIGN SYSTEM ADMIN SHARK */
+    .shark-card-admin {
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 15px;
+      border: 1px solid rgba(13, 202, 240, 0.2);
+      border-left: 5px solid #0dcaf0;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    }
+    .table-admin thead {
+      background-color: #000;
+      color: #0dcaf0;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .table-admin tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: 0.3s;
+    }
+    .table-admin tbody tr:hover {
+      background: rgba(13, 202, 240, 0.05) !important;
+    }
+    .role-badge {
+      font-size: 0.6rem;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 800;
+      display: inline-block;
+    }
+    .role-tecnico { background: #6610f2; color: #fff; box-shadow: 0 0 10px rgba(102, 16, 242, 0.3); }
+    .role-vendedor { background: #0d6efd; color: #fff; box-shadow: 0 0 10px rgba(13, 110, 253, 0.3); }
+    .val-receber {
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 0.95rem;
+    }
+    .header-info-mini {
+      font-size: 0.65rem;
+      color: rgba(13, 202, 240, 0.7);
+      display: block;
+      text-transform: uppercase;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .total-destaque {
+      background: rgba(255, 193, 7, 0.1);
+      border-radius: 8px;
+      padding: 8px;
+      color: #ffc107 !important;
+      font-size: 1.1rem;
+      border: 1px solid rgba(255, 193, 7, 0.2);
+    }
+    .modal-shark {
+      background: rgba(10, 15, 28, 0.98) !important;
+      border: 1px solid #0dcaf0 !important;
+      border-radius: 15px !important;
+      color: white;
+    }
+    .input-shark-dark {
+      background-color: #000 !important;
+      border: 1px solid #333 !important;
+      color: #fff !important;
+      border-radius: 8px !important;
+    }
     .modal-backdrop { display: none !important; }
     .pulse { animation: pulse-animation 2s infinite; }
-    @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+    .btn-pagar {
+      background: #198754;
+      border: none;
+      color: white;
+      transition: 0.3s;
+    }
+    .btn-pagar:hover {
+      background: #157347;
+      transform: scale(1.05);
+    }
   </style>
 </head>
 
@@ -27,84 +91,97 @@
 <div layout:fragment="conteudo">
   <div class="mt-2">
     <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="fw-bold text-white mb-0">
-        <i class="bi bi-people-fill me-2" style="color: #0dcaf0"></i> Equipe Shark
-      </h2>
+      <div>
+        <h2 class="fw-bold text-white mb-0">
+          <i class="bi bi-people-fill me-2" style="color: #0dcaf0"></i> Gestão de Equipe
+        </h2>
+        <p class="text-white-50 small mb-0">Shark Eletrônicos - Controle de Comissões</p>
+      </div>
     </div>
 
     <div class="card shark-card-admin overflow-hidden mb-5">
       <div class="table-responsive">
-        <table class="table table-hover table-dark align-middle mb-0 text-center table-admin">
+        <table class="table table-dark align-middle mb-0 text-center table-admin">
           <thead>
           <tr>
-            <th class="ps-4 text-start">NOME / FUNÇÃO</th>
-            <th>TAXAS (%)</th>
-            <th class="text-success">COMIS. O.S.</th>
-            <th class="text-info">COMIS. VENDAS</th>
-            <th class="text-warning">TOTAL A PAGAR</th>
-            <th>STATUS</th>
-            <th class="pe-4">AÇÕES</th>
+            <th class="ps-4 text-start" style="width: 22%;">NOME / CARGO</th>
+            <th style="width: 15%;">TAXAS (%)</th>
+            <th style="width: 18%;">SERVIÇOS (O.S.)</th>
+            <th style="width: 18%;">VENDAS (PRODUTOS)</th>
+            <th style="width: 15%;">TOTAL A PAGAR</th>
+            <th style="width: 12%;">AÇÕES</th>
           </tr>
           </thead>
           <tbody>
-          <tr th:each="u : ${usuarios}">
+          <tr th:each="u : ${usuarios}" th:with="osLiq=${u.totalComissaoOsAcumulada ?: 0.0}, vendaLiq=${u.saldoVendaCalculado ?: 0.0}">
             <td class="ps-4 text-start">
-              <div class="fw-bold text-white" th:text="${u.nome}">Nome</div>
+              <div class="fw-bold text-white fs-6" th:text="${u.nome}">Nome</div>
               <div class="d-flex gap-1 mt-1">
                 <span th:if="${u.tipoFuncionario == 'TECNICO' or u.tipoFuncionario == 'HIBRIDO'}" class="role-badge role-tecnico">TÉCNICO</span>
                 <span th:if="${u.tipoFuncionario == 'VENDEDOR' or u.tipoFuncionario == 'HIBRIDO'}" class="role-badge role-vendedor">VENDEDOR</span>
-                <span th:if="${u.tipoFuncionario == null}" class="role-badge bg-secondary">AGUARDANDO</span>
+                <span th:if="${u.tipoFuncionario == null}" class="role-badge bg-secondary pulse">AGUARDANDO</span>
               </div>
             </td>
 
             <td>
-              <div class="small text-white-50">OS: [[${u.comissaoOs ?: 0}]]%</div>
-              <div class="small text-white-50">Ven: [[${u.comissaoVenda ?: 0}]]%</div>
+              <div class="mb-2">
+                <span class="header-info-mini">Taxa O.S.</span>
+                <span class="text-white" th:text="${(u.comissaoOs ?: 0) + '%'}"></span>
+              </div>
+              <div>
+                <span class="header-info-mini">Taxa Vendas</span>
+                <span class="text-white" th:text="${(u.comissaoVenda ?: 0) + '%'}"></span>
+              </div>
             </td>
 
-            <td class="val-receber text-success"
-                th:text="${#numbers.formatCurrency(saldosOs != null ? saldosOs.get(u.id) : 0.0)}"></td>
+            <td class="val-receber">
+              <div class="mb-2">
+                <span class="header-info-mini text-success">Líquido O.S.</span>
+                <span class="text-white-50 small" th:text="${#numbers.formatCurrency(osLiq)}"></span>
+              </div>
+            </td>
 
-            <td class="val-receber text-info"
-                th:text="${#numbers.formatCurrency(saldosVendas != null ? saldosVendas.get(u.id) : 0.0)}"></td>
+            <td class="val-receber">
+              <div class="mb-2">
+                <span class="header-info-mini text-info">Valor Bruto</span>
+                <span class="text-white-50 small" th:text="${#numbers.formatCurrency(u.brutoVendaCalculado ?: 0.0)}"></span>
+              </div>
+              <div>
+                <span class="header-info-mini text-info">Valor Líquido</span>
+                <span class="text-info fw-bold" th:text="${#numbers.formatCurrency(vendaLiq)}"></span>
+              </div>
+            </td>
 
-            <td class="val-receber text-warning fw-bold"
-                th:with="totalPagarLiquido=${totalPagar != null ? totalPagar.get(u.id) : 0.0}"
-                th:text="${#numbers.formatCurrency(totalPagarLiquido)}"></td>
-
-            <td>
-                <span th:class="${u.aprovado ? 'badge border border-info text-info' : 'badge bg-warning text-dark pulse'}"
-                      th:text="${u.aprovado ? 'ATIVO' : 'NOVO CADASTRO'}"></span>
+            <td class="val-receber">
+              <span class="header-info-mini text-warning">Total Acumulado</span>
+              <div class="total-destaque fw-bold" th:text="${#numbers.formatCurrency(osLiq + vendaLiq)}"></div>
             </td>
 
             <td class="pe-4">
-              <div class="d-flex justify-content-center gap-2">
-                <form th:if="${!u.aprovado}" th:action="@{/admin/funcionarios/aprovar/{id}(id=${u.id})}" method="post" class="m-0">
-                  <button type="submit" class="btn btn-sm btn-success fw-bold px-3 shadow-sm">
-                    <i class="bi bi-check-lg me-1"></i> ACEITAR
-                  </button>
+              <div class="d-flex flex-column gap-2 align-items-center">
+                <form th:if="${!u.aprovado}" th:action="@{/admin/funcionarios/aprovar/{id}(id=${u.id})}" method="post" class="w-100">
+                  <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">ACEITAR</button>
                 </form>
 
                 <button th:if="${u.aprovado}"
-                        th:with="saldoOs=${saldosOs != null ? saldosOs.get(u.id) : 0.0}, saldoVenda=${saldosVendas != null ? saldosVendas.get(u.id) : 0.0}"
-                        class="btn btn-sm btn-success fw-bold"
-                        th:attr="data-id=${u.id}, data-nome=${u.nome}, data-saldo-os=${saldoOs}, data-saldo-venda=${saldoVenda}"
+                        class="btn btn-sm btn-pagar w-100 fw-bold"
+                        th:attr="data-id=${u.id}, data-nome=${u.nome}, data-saldo-os=${osLiq}, data-saldo-venda=${vendaLiq}"
                         onclick="prepararPagamento(this)">
-                  <i class="bi bi-cash-stack"></i> PAGAR
+                  PAGAR
                 </button>
 
-                <button th:if="${u.aprovado}"
-                        class="btn btn-sm btn-outline-info"
-                        th:attr="data-id=${u.id}, data-nome=${u.nome}, data-tipo=${u.tipoFuncionario}, data-com-os=${u.comissaoOs}, data-com-venda=${u.comissaoVenda}"
-                        onclick="popularDados(this)">
-                  <i class="bi bi-gear-fill"></i>
-                </button>
-
-                <form th:action="@{/admin/funcionarios/deletar/{id}(id=${u.id})}" method="post" class="m-0">
-                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deseja realmente remover este integrante?')">
-                    <i class="bi bi-person-x"></i>
+                <div class="d-flex gap-1 w-100">
+                  <button th:if="${u.aprovado}" class="btn btn-sm btn-outline-info w-100"
+                          th:attr="data-id=${u.id}, data-nome=${u.nome}, data-tipo=${u.tipoFuncionario}, data-com-os=${u.comissaoOs}, data-com-venda=${u.comissaoVenda}"
+                          onclick="popularDados(this)">
+                    <i class="bi bi-gear"></i>
                   </button>
-                </form>
+                  <form th:action="@{/admin/funcionarios/deletar/{id}(id=${u.id})}" method="post" class="w-100">
+                    <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Remover?')">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
               </div>
             </td>
           </tr>
@@ -114,29 +191,22 @@
     </div>
 
     <div class="mt-5 mb-5">
-      <h4 class="text-white fw-bold mb-3">
-        <i class="bi bi-clock-history me-2 text-info"></i> Histórico de Pagamentos
-      </h4>
+      <h4 class="text-white fw-bold mb-3"><i class="bi bi-clock-history me-2 text-info"></i> Histórico</h4>
       <div class="card shark-card-admin overflow-hidden">
         <div class="table-responsive">
-          <table class="table table-hover table-dark align-middle mb-0 text-center table-admin">
+          <table class="table table-dark align-middle mb-0 text-center table-admin">
             <thead>
             <tr>
-              <th class="ps-4 text-start">FUNCIONÁRIO</th>
-              <th>DATA E HORA</th>
-              <th>RESPONSÁVEL</th>
-              <th class="pe-4 text-warning">VALOR ABATIDO</th>
+              <th class="ps-4 text-start">Funcionário</th>
+              <th>Data</th>
+              <th class="pe-4 text-warning">Valor Abatido</th>
             </tr>
             </thead>
             <tbody>
             <tr th:each="p : ${pagamentos}">
-              <td class="ps-4 text-start fw-bold text-white" th:text="${p.nomeFuncionario}">Vendedor</td>
-              <td class="text-white-50" th:text="${#temporals.format(p.dataHora, 'dd/MM/yyyy HH:mm')}"></td>
-              <td class="text-white-50" th:text="${p.responsavelPagamento}">ADMIN</td>
+              <td class="ps-4 text-start fw-bold text-white" th:text="${p.nomeFuncionario}"></td>
+              <td class="text-white-50 small" th:text="${#temporals.format(p.dataHora, 'dd/MM/yyyy HH:mm')}"></td>
               <td class="pe-4 text-success fw-bold" th:text="${#numbers.formatCurrency(p.valorPago)}"></td>
-            </tr>
-            <tr th:if="${#lists.isEmpty(pagamentos)}">
-              <td colspan="4" class="py-4 text-white-50">Nenhum pagamento registrado ainda.</td>
             </tr>
             </tbody>
           </table>
@@ -147,34 +217,33 @@
     <div class="modal fade" id="modalComissao" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-shark">
-          <div class="modal-header border-0 pb-0">
-            <h5 class="modal-title text-white fw-bold"><i class="bi bi-percent me-2"></i>Ajustar: <span id="nomeFuncModal" class="text-info"></span></h5>
+          <div class="modal-header border-0">
+            <h5 class="modal-title fw-bold">Configurar: <span id="nomeFuncModal" class="text-info"></span></h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="limparForçado()"></button>
           </div>
           <div class="modal-body p-4">
             <input type="hidden" id="idFuncModal">
             <div class="mb-4">
-              <label class="form-label text-white-50 small fw-bold">FUNÇÃO NO SISTEMA</label>
-              <select id="tipoFuncModal" class="form-select input-shark-dark p-2">
-                <option value="VENDEDOR">VENDEDOR / BALCÃO</option>
-                <option value="TECNICO">TÉCNICO / LABORATÓRIO</option>
-                <option value="HIBRIDO">HÍBRIDO (AMBOS)</option>
+              <label class="form-label text-info small fw-bold">CARGO</label>
+              <select id="tipoFuncModal" class="form-select input-shark-dark">
+                <option value="VENDEDOR">VENDEDOR</option>
+                <option value="TECNICO">TÉCNICO</option>
+                <option value="HIBRIDO">HÍBRIDO</option>
               </select>
             </div>
             <div class="row">
               <div class="col-6 mb-3">
-                <label class="form-label text-success small fw-bold">% COMISSÃO O.S.</label>
+                <label class="form-label text-success small fw-bold">O.S. (%)</label>
                 <input type="number" id="osFuncModal" class="form-control input-shark-dark" step="0.1">
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label text-info small fw-bold">% COMISSÃO VENDA</label>
+                <label class="form-label text-info small fw-bold">VENDAS (%)</label>
                 <input type="number" id="vendaFuncModal" class="form-control input-shark-dark" step="0.1">
               </div>
             </div>
           </div>
           <div class="modal-footer border-0">
-            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" onclick="limparForçado()">VOLTAR</button>
-            <button type="button" onclick="salvarConfig(event)" id="btnSalvar" class="btn btn-sm btn-info px-4 fw-bold text-dark">ATUALIZAR</button>
+            <button type="button" onclick="salvarConfig(event)" class="btn btn-info w-100 fw-bold text-dark">ATUALIZAR CONFIGURAÇÕES</button>
           </div>
         </div>
       </div>
@@ -183,35 +252,31 @@
     <div class="modal fade" id="modalPagamento" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content modal-shark">
-          <form th:action="@{/pagamentos/registrar}" method="post">
-            <div class="modal-header border-0 pb-0">
-              <h5 class="modal-title text-white fw-bold"><i class="bi bi-wallet2 me-2 text-success"></i>Pagar: <span id="nomePagModal" class="text-success"></span></h5>
+          <form th:action="@{/pagamentos/registrar}" method="post" id="formPagamento">
+            <div class="modal-header border-0">
+              <h5 class="modal-title fw-bold">Pagar: <span id="nomePagModal" class="text-success"></span></h5>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="limparForçado()"></button>
             </div>
             <div class="modal-body p-4">
               <input type="hidden" name="funcionarioId" id="idPagModal">
-
               <div class="mb-4">
-                <label class="form-label text-white-50 small fw-bold">TIPO DE COMISSÃO</label>
-                <select id="tipoComissaoModal" name="tipoComissao" class="form-select input-shark-dark p-2" onchange="alternarSaldoModal()">
-                  <option value="OS">PAGAR COMISSÃO O.S.</option>
-                  <option value="VENDA">PAGAR COMISSÃO VENDAS</option>
+                <label class="form-label text-white-50 small fw-bold">TIPO</label>
+                <select id="tipoComissaoModal" name="tipoComissao" class="form-select input-shark-dark" onchange="alternarSaldoModal()">
+                  <option value="OS">COMISSÃO O.S.</option>
+                  <option value="VENDA">COMISSÃO VENDAS</option>
                 </select>
               </div>
-
-              <div class="text-center mb-4 p-3" style="background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px dashed #28a745;">
-                <small class="text-white-50 d-block" id="labelSaldoModal">SALDO O.S. DISPONÍVEL</small>
+              <div class="text-center mb-4 p-3 bg-black rounded border border-success">
+                <small class="text-white-50 d-block" id="labelSaldoModal">DISPONÍVEL O.S.</small>
                 <h3 class="text-success fw-bold mb-0" id="saldoDisponivelModal">R$ 0,00</h3>
               </div>
-
-              <div class="mb-3">
-                <label class="form-label text-white-50 small fw-bold">VALOR A PAGAR (R$)</label>
-                <input type="number" name="valorPago" id="valorPagInput" class="form-control input-shark-dark form-control-lg text-center fw-bold text-white" step="0.01" min="0.01" required>
+              <div class="mb-2">
+                <label class="form-label text-white-50 small fw-bold">VALOR (R$)</label>
+                <input type="number" name="valorPago" id="valorPagInput" class="form-control input-shark-dark form-control-lg text-center fw-bold" step="0.01" required>
               </div>
             </div>
             <div class="modal-footer border-0">
-              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" onclick="limparForçado()">CANCELAR</button>
-              <button type="submit" class="btn btn-sm btn-success px-4 fw-bold">CONFIRMAR E ABATER</button>
+              <button type="submit" class="btn btn-success w-100 fw-bold">CONFIRMAR PAGAMENTO</button>
             </div>
           </form>
         </div>
@@ -243,46 +308,33 @@
 
     function prepararPagamento(btn) {
       limparForçado();
-      saldoOsTemp = parseFloat(btn.getAttribute('data-saldo-os'));
-      saldoVendaTemp = parseFloat(btn.getAttribute('data-saldo-venda'));
-
+      saldoOsTemp = parseFloat(btn.getAttribute('data-saldo-os')) || 0;
+      saldoVendaTemp = parseFloat(btn.getAttribute('data-saldo-venda')) || 0;
       document.getElementById('idPagModal').value = btn.getAttribute('data-id');
       document.getElementById('nomePagModal').textContent = btn.getAttribute('data-nome');
       document.getElementById('tipoComissaoModal').value = "OS";
-
       alternarSaldoModal();
       new bootstrap.Modal(document.getElementById('modalPagamento')).show();
     }
 
     function alternarSaldoModal() {
       const tipo = document.getElementById('tipoComissaoModal').value;
-      const label = document.getElementById('labelSaldoModal');
       const display = document.getElementById('saldoDisponivelModal');
       const input = document.getElementById('valorPagInput');
-
-      if(tipo === "OS") {
-        label.textContent = "SALDO O.S. DISPONÍVEL";
-        display.textContent = saldoOsTemp.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        input.value = saldoOsTemp.toFixed(2);
-      } else {
-        label.textContent = "SALDO VENDAS DISPONÍVEL";
-        display.textContent = saldoVendaTemp.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        input.value = saldoVendaTemp.toFixed(2);
-      }
+      let saldoAtual = (tipo === "OS") ? saldoOsTemp : saldoVendaTemp;
+      document.getElementById('labelSaldoModal').textContent = tipo === "OS" ? "DISPONÍVEL O.S." : "DISPONÍVEL VENDAS";
+      display.textContent = saldoAtual.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      input.value = saldoAtual.toFixed(2);
+      input.max = saldoAtual.toFixed(2);
     }
 
     function salvarConfig(e) {
       e.preventDefault();
-      const btn = document.getElementById('btnSalvar');
-      btn.disabled = true;
-      btn.innerHTML = 'SALVANDO...';
-
       const id = document.getElementById('idFuncModal').value;
       const payload = new URLSearchParams();
       payload.append('tipoFuncionario', document.getElementById('tipoFuncModal').value);
       payload.append('comissaoOs', document.getElementById('osFuncModal').value);
       payload.append('comissaoVenda', document.getElementById('vendaFuncModal').value);
-
       const token = document.querySelector('meta[name="_csrf"]')?.content;
       const header = document.querySelector('meta[name="_csrf_header"]')?.content;
 
@@ -290,16 +342,8 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', [header]: token },
         body: payload.toString()
-      }).then(res => {
-        if(res.ok) window.location.reload();
-        else alert('Erro ao salvar.');
-      }).catch(() => {
-        btn.disabled = false;
-        btn.innerHTML = 'ATUALIZAR';
-      });
+      }).then(res => { if(res.ok) window.location.reload(); });
     }
-
-    document.addEventListener('hidden.bs.modal', limparForçado);
   </script>
 </div>
 </body>

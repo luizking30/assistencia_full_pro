@@ -27,24 +27,28 @@ public class Usuario {
     @Column(length = 20)
     private String tipoFuncionario;
 
-    // --- TAXAS DE PERCENTUAL (Configuradas no modal) ---
+    // --- TAXAS DE PERCENTUAL ---
     @Column(nullable = false)
     private Double comissaoOs = 0.0;
 
     @Column(nullable = false)
     private Double comissaoVenda = 0.0;
 
-    // --- VALORES ACUMULADOS (Exibidos na tabela "A RECEBER") ---
-    @Column(nullable = false)
+    // --- CAMPOS DE CÁLCULO (TRANSIENTES: Não salvam no banco, servem para o HTML) ---
+    // Usamos estes campos para mostrar o saldo atualizado na hora
+    @Transient
     private Double totalComissaoOsAcumulada = 0.0;
 
-    @Column(nullable = false)
-    private Double totalComissaoVendasAcumulada = 0.0;
+    @Transient
+    private Double saldoVendaCalculado = 0.0;
 
-    // --- MÉTODO PARA O THYMELEAF (RESOLVE O ERRO DE SALDO TOTAL) ---
+    @Transient
+    private Double brutoVendaCalculado = 0.0;
+
+    // --- MÉTODO PARA O SALDO TOTAL ---
     public Double getSaldoTotalReceber() {
-        Double os = (totalComissaoOsAcumulada != null) ? totalComissaoOsAcumulada : 0.0;
-        Double vendas = (totalComissaoVendasAcumulada != null) ? totalComissaoVendasAcumulada : 0.0;
+        double os = (totalComissaoOsAcumulada != null) ? totalComissaoOsAcumulada : 0.0;
+        double vendas = (saldoVendaCalculado != null) ? saldoVendaCalculado : 0.0;
         return os + vendas;
     }
 
@@ -91,6 +95,9 @@ public class Usuario {
     public Double getTotalComissaoOsAcumulada() { return totalComissaoOsAcumulada; }
     public void setTotalComissaoOsAcumulada(Double totalComissaoOsAcumulada) { this.totalComissaoOsAcumulada = totalComissaoOsAcumulada; }
 
-    public Double getTotalComissaoVendasAcumulada() { return totalComissaoVendasAcumulada; }
-    public void setTotalComissaoVendasAcumulada(Double totalComissaoVendasAcumulada) { this.totalComissaoVendasAcumulada = totalComissaoVendasAcumulada; }
+    public Double getSaldoVendaCalculado() { return saldoVendaCalculado; }
+    public void setSaldoVendaCalculado(Double saldoVendaCalculado) { this.saldoVendaCalculado = saldoVendaCalculado; }
+
+    public Double getBrutoVendaCalculado() { return brutoVendaCalculado; }
+    public void setBrutoVendaCalculado(Double brutoVendaCalculado) { this.brutoVendaCalculado = brutoVendaCalculado; }
 }

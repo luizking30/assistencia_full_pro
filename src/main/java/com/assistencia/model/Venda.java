@@ -26,11 +26,17 @@ public class Venda {
     @Column(name = "custo_total_estoque")
     private Double custoTotalEstoque = 0.0;
 
-    // MELHORIA: nullable = true permite que o JPA salve mesmo se o vendedor não for setado no objeto,
-    // evitando o erro de "default value" no MySQL se você ajustar a coluna no banco também.
+    // --- NOVOS CAMPOS PARA CONGELAR A COMISSÃO ---
+    @Column(name = "comissao_vendedor_valor")
+    private Double comissaoVendedorValor = 0.0; // Valor em R$ ja calculado
+
+    @Column(name = "taxa_comissao_aplicada")
+    private Double taxaComissaoAplicada = 0.0; // A % que ele tinha no ato da venda
+    // --------------------------------------------
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vendedor_id", nullable = true)
-    @ToString.Exclude // Evita erro de recursão no log do Lombok
+    @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private Usuario vendedor;
 
@@ -39,7 +45,6 @@ public class Venda {
 
     private boolean pago = false;
 
-    // MELHORIA: Adicionado orphanRemoval para limpar itens excluídos da lista
     @OneToMany(mappedBy = "venda", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemVenda> itens = new ArrayList<>();
 
@@ -48,7 +53,7 @@ public class Venda {
     }
 
     /**
-     * Sincroniza cálculos e histórico antes de persistir.
+     * Sincroniza cálculos, estoque e congela comissões antes de persistir.
      */
     @PrePersist
     @PreUpdate
@@ -57,9 +62,16 @@ public class Venda {
             this.dataHora = LocalDateTime.now();
         }
 
-        // Garante o registro do nome para auditoria (Shark Eletrônicos)
+        // 1. Registra quem vendeu e qual era a taxa dele HOJE
         if (this.vendedor != null) {
             this.nomeVendedorNoAto = this.vendedor.getNome();
+
+            // Só define a taxa se for uma venda nova (taxa ainda é 0)
+            // ou se você quiser permitir reprocessamento manual.
+            if (this.taxaComissaoAplicada == null || this.taxaComissaoAplicada == 0.0) {
+                this.taxaComissaoAplicada = (this.vendedor.getComissaoVenda() != null)
+                        ? this.vendedor.getComissaoVenda() : 0.0;
+            }
         } else if (this.nomeVendedorNoAto == null) {
             this.nomeVendedorNoAto = "Sistema Shark";
         }
@@ -69,7 +81,7 @@ public class Venda {
 
         if (itens != null) {
             for (ItemVenda item : itens) {
-                item.setVenda(this); // Sincronização bidirecional essencial
+                item.setVenda(this);
 
                 int qtd = (item.getQuantidade() != null) ? item.getQuantidade() : 0;
                 double precoVenda = (item.getPrecoUnitario() != null) ? item.getPrecoUnitario() : 0.0;
@@ -82,5 +94,13 @@ public class Venda {
 
         this.valorTotal = totalVendaCalculado;
         this.custoTotalEstoque = totalCustoCalculado;
+
+        // 2. CONGELA O VALOR EM DINHEIRO DA COMISSÃO
+        // Mesmo que o admin mude a % do funcionário depois, este valor aqui não muda mais.
+        if (this.taxaComissaoAplicada > 0) {
+            this.comissaoVendedorValor = (this.valorTotal * this.taxaComissaoAplicada) / 100;
+        } else {
+            this.comissaoVendedorValor = 0.0;
+        }
     }
 }

@@ -6,6 +6,7 @@ import com.assistencia.repository.PagamentoComissaoRepository;
 import com.assistencia.repository.UsuarioRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional; // Adicione este import
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,40 +28,35 @@ public class PagamentoController {
     }
 
     @PostMapping("/registrar")
+    @Transactional // Garante que a operação seja atômica
     public String registrarPagamento(@RequestParam("funcionarioId") Long id,
                                      @RequestParam("valorPago") Double valor,
                                      @RequestParam("tipoComissao") String tipoComissao,
                                      Authentication auth,
                                      RedirectAttributes attributes) {
 
-        // 1. Busca o usuário com segurança
         Usuario u = usuarioRepository.findById(id).orElse(null);
 
-        if (u != null && valor != null && valor > 0) {
-            // 2. Criar o registro do histórico de pagamentos
+        // Se o valor for quase zero (ex: 0.000001), tratamos como 0 para não bugar
+        if (u != null && valor != null && valor > 0.001) {
+
             PagamentoComissao novoPagamento = new PagamentoComissao();
             novoPagamento.setFuncionarioId(u.getId());
             novoPagamento.setNomeFuncionario(u.getNome());
             novoPagamento.setValorPago(valor);
-
-            // Garante que o tipo salve como "OS" ou "VENDA" (conforme seu repository espera)
-            novoPagamento.setTipoComissao(tipoComissao.toUpperCase());
+            novoPagamento.setTipoComissao(tipoComissao.toUpperCase()); // "TOTAL" vindo do HTML
             novoPagamento.setDataHora(LocalDateTime.now());
 
-            // 3. Captura quem é o administrador que está realizando a baixa
             String adminNome = (auth != null) ? auth.getName() : "ADMIN_SHARK";
             novoPagamento.setResponsavelPagamento(adminNome);
 
-            // 4. Salva no banco (Isso vai abater automaticamente no cálculo do AdminController)
             pagamentoComissaoRepository.save(novoPagamento);
 
-            attributes.addFlashAttribute("mensagem",
-                    "Pagamento de " + tipoComissao + " para " + u.getNome() + " registrado com sucesso!");
+            attributes.addFlashAttribute("mensagem", "Comissão de " + u.getNome() + " liquidada com sucesso!");
         } else {
-            attributes.addFlashAttribute("erro", "Erro ao registrar: Verifique o valor informado.");
+            attributes.addFlashAttribute("erro", "Não há saldo para liquidar ou usuário inválido.");
         }
 
-        // ✅ CORREÇÃO: Redireciona para a rota correta que você está usando no AdminController
         return "redirect:/admin/funcionarios";
     }
 }

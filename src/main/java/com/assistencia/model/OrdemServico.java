@@ -30,6 +30,7 @@ public class OrdemServico {
 
     // --- CONTROLE DE COMISSÃO ---
     private boolean pago = false;
+    private Double comissaoTecnicoValor = 0.0; // VALOR FIXADO NO ATO DA ENTREGA
 
     // --- NOVOS CAMPOS DE AUDITORIA ---
     private String funcionarioAbertura;
@@ -83,12 +84,14 @@ public class OrdemServico {
     public Double getCustoPeca() { return custoPeca; }
     public void setCustoPeca(Double custoPeca) { this.custoPeca = custoPeca; }
 
-    // Corrigido para bater com o nome do campo 'tecnico'
     public Usuario getTecnico() { return tecnico; }
     public void setTecnico(Usuario tecnico) { this.tecnico = tecnico; }
 
     public boolean isPago() { return pago; }
     public void setPago(boolean pago) { this.pago = pago; }
+
+    public Double getComissaoTecnicoValor() { return comissaoTecnicoValor; }
+    public void setComissaoTecnicoValor(Double comissaoTecnicoValor) { this.comissaoTecnicoValor = comissaoTecnicoValor; }
 
     public String getFuncionarioAbertura() { return funcionarioAbertura; }
     public void setFuncionarioAbertura(String funcionarioAbertura) { this.funcionarioAbertura = funcionarioAbertura; }

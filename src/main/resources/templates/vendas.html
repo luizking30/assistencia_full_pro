@@ -21,7 +21,7 @@
         .border-left-info { border-left-color: #0dcaf0 !important; }
         .glow-info { filter: drop-shadow(0 0 5px #0dcaf0); }
 
-        /* LISTA DE SUGESTÕES - LOGICA DA OS */
+        /* LISTA DE SUGESTÕES */
         .sugestoes-wrapper {
             background-color: #121212 !important;
             border: 2px solid #0dcaf0 !important;
@@ -177,7 +177,7 @@
                         </div>
                         <div class="d-flex gap-3">
                             <button type="reset" onclick="window.location.reload()" class="btn btn-outline-secondary btn-lg px-4">LIMPAR</button>
-                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow-lg">
+                            <button type="submit" class="btn btn-success btn-lg px-5 fw-bold shadow-lg" id="btnFinalizar">
                                 <i class="bi bi-check-circle me-2"></i>FINALIZAR (F2)
                             </button>
                         </div>
@@ -276,11 +276,14 @@
 <th:block layout:fragment="scripts">
     <script th:inline="javascript">
         let itensVenda = [];
+        let estoqueDisponivelAtual = 0;
+
         const campoBusca = document.getElementById('campoBusca');
         const sugestoesBox = document.getElementById('sugestoesProdutos');
         const precoInput = document.getElementById('precoBusca');
         const descontoInput = document.getElementById('descontoBusca');
         const qtdInput = document.getElementById('qtdBusca');
+        const formVenda = document.getElementById('formVenda');
 
         function buscarProdutos(termo = "") {
             fetch(`/estoque/sugestoes?termo=${encodeURIComponent(termo)}`)
@@ -294,7 +297,7 @@
                             div.innerHTML = `
                                 <div class="fw-bold text-info">${p.nome}</div>
                                 <div class="d-flex justify-content-between" style="font-size: 0.8rem; margin-top: 2px;">
-                                    <span class="text-white-50">ID: #${p.id}</span>
+                                    <span class="text-white-50">Estoque: ${p.quantidade} | ID: #${p.id}</span>
                                     <span class="text-success fw-bold">R$ ${p.precoVenda.toFixed(2)}</span>
                                 </div>
                             `;
@@ -304,6 +307,7 @@
                                 document.getElementById('produtoIdReal').value = p.id;
                                 document.getElementById('nomeSelecionado').value = p.nome;
                                 precoInput.value = p.precoVenda;
+                                estoqueDisponivelAtual = p.quantidade;
                                 sugestoesBox.style.display = 'none';
                                 descontoInput.focus();
                             });
@@ -327,18 +331,36 @@
             const descontoPerc = parseFloat(descontoInput.value) || 0;
             const qtd = parseInt(qtdInput.value);
 
+            if (!id) { alert("Selecione um produto da lista!"); return; }
+
+            if (qtd > estoqueDisponivelAtual) {
+                alert(`⚠️ ESTOQUE INSUFICIENTE!\nO produto "${nome}" possui apenas ${estoqueDisponivelAtual} unidade(s) em estoque.`);
+                qtdInput.value = estoqueDisponivelAtual;
+                return;
+            }
+
             if (descontoPerc > 10) {
                 alert("O desconto máximo permitido é de 10%!");
                 descontoInput.value = 10;
                 return;
             }
 
-            if (!id) { alert("Selecione um produto da lista!"); return; }
-
             const precoFinal = precoOriginal - (precoOriginal * (descontoPerc / 100));
-            itensVenda.push({
-                id, nome, precoOriginal, precoFinal, descontoPerc, qtd, subtotal: precoFinal * qtd
-            });
+
+            // Lógica para somar se o item já existir no carrinho
+            const itemExistente = itensVenda.find(it => it.id === id);
+            if(itemExistente) {
+                if ((itemExistente.qtd + qtd) > estoqueDisponivelAtual) {
+                    alert("A soma deste item com o que já está no carrinho excede o estoque disponível!");
+                    return;
+                }
+                itemExistente.qtd += qtd;
+                itemExistente.subtotal = itemExistente.precoFinal * itemExistente.qtd;
+            } else {
+                itensVenda.push({
+                    id, nome, precoOriginal, precoFinal, descontoPerc, qtd, subtotal: precoFinal * qtd
+                });
+            }
 
             renderizarTabela();
             limparCampos();
@@ -350,20 +372,23 @@
             let totalGeral = 0;
             itensVenda.forEach((item, i) => {
                 totalGeral += item.subtotal;
-                tbody.innerHTML += `
-                <tr>
-                    <td class="ps-4">#${item.id}<input type="hidden" name="itens[${i}].produto.id" value="${item.id}"></td>
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="ps-4">#${item.id}</td>
                     <td>${item.nome}</td>
-                    <td class="text-center">${item.qtd}<input type="hidden" name="itens[${i}].quantidade" value="${item.qtd}"></td>
+                    <td class="text-center">${item.qtd}</td>
                     <td>R$ ${item.precoOriginal.toFixed(2)}</td>
                     <td><span class="text-danger">-${item.descontoPerc}%</span></td>
                     <td class="text-success fw-bold">R$ ${item.subtotal.toFixed(2)}</td>
                     <td class="text-center">
                         <button type="button" onclick="removerItem(${i})" class="btn btn-sm btn-outline-danger border-0"><i class="bi bi-trash"></i></button>
                     </td>
+                    <input type="hidden" name="itens[${i}].produto.id" value="${item.id}">
+                    <input type="hidden" name="itens[${i}].quantidade" value="${item.qtd}">
                     <input type="hidden" name="itens[${i}].precoUnitario" value="${item.precoFinal.toFixed(2)}">
                     <input type="hidden" name="itens[${i}].desconto" value="${item.descontoPerc}">
-                </tr>`;
+                `;
+                tbody.appendChild(tr);
             });
             document.getElementById('totalVenda').innerText = `R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             document.getElementById('inputTotalVenda').value = totalGeral.toFixed(2);
@@ -377,8 +402,17 @@
         function limparCampos() {
             campoBusca.value = ''; precoInput.value = ''; descontoInput.value = '0'; qtdInput.value = '1';
             document.getElementById('produtoIdReal').value = '';
+            estoqueDisponivelAtual = 0;
             campoBusca.focus();
         }
+
+        // Validação ao enviar o formulário (Clica no botão ou F2)
+        formVenda.addEventListener('submit', function(e) {
+            if(itensVenda.length === 0) {
+                e.preventDefault();
+                alert("❌ Erro: Adicione produto(s) no carrinho para finalizar a venda!");
+            }
+        });
 
         setInterval(() => {
             const rel = document.getElementById('relogio');
@@ -406,7 +440,10 @@
         document.getElementById('filtroData').addEventListener('change', filtrarVendas);
 
         window.addEventListener('keydown', (e) => {
-            if(e.key === "F2") { e.preventDefault(); document.getElementById('formVenda').submit(); }
+            if(e.key === "F2") {
+                e.preventDefault();
+                formVenda.requestSubmit(); // Dispara o evento de submit passando pela validação do preventDefault
+            }
         });
     </script>
 </th:block>

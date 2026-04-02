@@ -1,6 +1,7 @@
 package com.assistencia.controller;
 
 import com.assistencia.model.OrdemServico;
+import com.assistencia.model.PagamentoComissao;
 import com.assistencia.model.Usuario;
 import com.assistencia.model.Venda;
 import com.assistencia.repository.ClienteRepository;
@@ -16,6 +17,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 
@@ -45,66 +48,86 @@ public class AdminController {
         List<Usuario> usuarios = usuarioRepo.findAll();
         List<OrdemServico> todasOrdens = ordemRepo.findAll();
         List<Venda> todasVendas = vendaRepo.findAll();
+        List<PagamentoComissao> todosPagamentos = pagamentoRepo.findAll();
 
         for (Usuario u : usuarios) {
-            final String nomeUsuarioDb = (u.getNome() != null) ? u.getNome().trim() : "";
-            final Long idUsuario = u.getId();
+            final Long idU = u.getId();
+            final String nomeU = (u.getNome() != null) ? u.getNome().trim() : "";
 
-            // 1. CÁLCULO VENDAS COM BIGDECIMAL 📈
-            List<Venda> vendasDesteU = todasVendas.stream()
-                    .filter(v -> v.getVendedor() != null && Objects.equals(v.getVendedor().getId(), idUsuario))
+            // 1. DETERMINAR DATAS DE CORTE (ÚLTIMOS PAGAMENTOS POR TIPO)
+            LocalDateTime corteOs = todosPagamentos.stream()
+                    .filter(p -> Objects.equals(p.getFuncionarioId(), idU) && "OS".equals(p.getTipoComissao()))
+                    .map(PagamentoComissao::getDataHora)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(LocalDateTime.of(2000, 1, 1, 0, 0));
+
+            LocalDateTime corteVenda = todosPagamentos.stream()
+                    .filter(p -> Objects.equals(p.getFuncionarioId(), idU) && "VENDA".equals(p.getTipoComissao()))
+                    .map(PagamentoComissao::getDataHora)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(LocalDateTime.of(2000, 1, 1, 0, 0));
+
+            // 2. CÁLCULO VENDAS (SÓ O QUE FOI FEITO APÓS O CORTE)
+            List<Venda> vendasPendentes = todasVendas.stream()
+                    .filter(v -> v.getVendedor() != null && Objects.equals(v.getVendedor().getId(), idU))
+                    .filter(v -> v.getDataHora() != null && v.getDataHora().isAfter(corteVenda))
                     .toList();
 
-            BigDecimal faturamentoBruto = vendasDesteU.stream()
+            BigDecimal brutoVenda = vendasPendentes.stream()
                     .map(v -> BigDecimal.valueOf(v.getValorTotal() != null ? v.getValorTotal() : 0.0))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            BigDecimal taxaVenda = BigDecimal.valueOf(u.getComissaoVenda() != null ? u.getComissaoVenda() : 0.0);
+            BigDecimal comissaoVenda = vendasPendentes.stream()
+                    .map(v -> BigDecimal.valueOf(v.getComissaoVendedorValor() != null ? v.getComissaoVendedorValor() : 0.0))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // Conta: (Faturamento * Taxa) / 100
-            BigDecimal comissaoGeradaVenda = faturamentoBruto.multiply(taxaVenda)
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-
-            // 2. CÁLCULO O.S. COM BIGDECIMAL 🛠️
-            BigDecimal comissaoGeradaOs = todasOrdens.stream()
+            // 3. CÁLCULO O.S. (SÓ O QUE FOI FEITO APÓS O CORTE)
+            List<OrdemServico> ordensPendentes = todasOrdens.stream()
                     .filter(os -> {
-                        String status = os.getStatus();
+                        String status = os.getStatus() != null ? os.getStatus() : "";
                         boolean concluida = "Entregue".equalsIgnoreCase(status) || "Concluído".equalsIgnoreCase(status);
-                        boolean mesmoFuncionario = os.getFuncionarioAndamento() != null &&
-                                os.getFuncionarioAndamento().trim().equalsIgnoreCase(nomeUsuarioDb);
-                        return concluida && mesmoFuncionario;
+                        String nomeNaOs = (os.getFuncionarioAndamento() != null) ? os.getFuncionarioAndamento().trim() : "";
+                        return concluida && nomeNaOs.equalsIgnoreCase(nomeU);
                     })
+                    .filter(os -> os.getDataEntrega() != null && os.getDataEntrega().isAfter(corteOs))
+                    .toList();
+
+            BigDecimal brutoOs = ordensPendentes.stream()
+                    .map(os -> BigDecimal.valueOf(os.getValorTotal() != null ? os.getValorTotal() : 0.0))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal comissaoOs = ordensPendentes.stream()
                     .map(os -> {
-                        BigDecimal valorOs = BigDecimal.valueOf(os.getValorTotal() != null ? os.getValorTotal() : 0.0);
-                        BigDecimal custoPeca = BigDecimal.valueOf(os.getCustoPeca() != null ? os.getCustoPeca() : 0.0);
-                        BigDecimal taxaOs = BigDecimal.valueOf(u.getComissaoOs() != null ? u.getComissaoOs() : 0.0);
-                        // (Total - Peça) * Taxa / 100
-                        return valorOs.subtract(custoPeca)
-                                .multiply(taxaOs)
-                                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                        if (os.getComissaoTecnicoValor() != null && os.getComissaoTecnicoValor() > 0) {
+                            return BigDecimal.valueOf(os.getComissaoTecnicoValor());
+                        }
+                        BigDecimal liq = BigDecimal.valueOf(os.getValorTotal() - (os.getCustoPeca() != null ? os.getCustoPeca() : 0.0));
+                        BigDecimal taxa = BigDecimal.valueOf(u.getComissaoOs() != null ? u.getComissaoOs() : 0.0);
+                        return liq.multiply(taxa).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
                     })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // 3. ABATIMENTO DE PAGAMENTOS
-            BigDecimal valorPagoOS = BigDecimal.valueOf(Objects.requireNonNullElse(pagamentoRepo.somarPorFuncionarioETipo(idUsuario, "OS"), 0.0));
-            BigDecimal valorPagoVenda = BigDecimal.valueOf(Objects.requireNonNullElse(pagamentoRepo.somarPorFuncionarioETipo(idUsuario, "VENDA"), 0.0));
+            // 4. SETANDO VALORES PARA O HTML
+            u.setBrutoOsCalculado(brutoOs.doubleValue());
+            u.setBrutoVendaCalculado(brutoVenda.doubleValue());
+            u.setTotalComissaoOsAcumulada(comissaoOs.doubleValue());
+            u.setSaldoVendaCalculado(comissaoVenda.doubleValue());
 
-            // Saldo Final (Garante que não seja negativo)
-            BigDecimal saldoFinalVenda = comissaoGeradaVenda.subtract(valorPagoVenda).max(BigDecimal.ZERO);
-            BigDecimal saldoFinalOS = comissaoGeradaOs.subtract(valorPagoOS).max(BigDecimal.ZERO);
+            // 5. ÚLTIMO PAGAMENTO GERAL (AUDITORIA)
+            var ultimoPgtoGeral = todosPagamentos.stream()
+                    .filter(p -> Objects.equals(p.getFuncionarioId(), idU))
+                    .map(PagamentoComissao::getDataHora)
+                    .max(LocalDateTime::compareTo);
 
-            // 🚀 SETANDO NOS CAMPOS TRANSIENTES (Convertendo de volta para double para o HTML)
-            u.setBrutoVendaCalculado(faturamentoBruto.doubleValue());
-            u.setSaldoVendaCalculado(saldoFinalVenda.doubleValue());
-            u.setTotalComissaoOsAcumulada(saldoFinalOS.doubleValue());
-
-            // LOG DE PRECISÃO NO CONSOLE
-            System.out.println(">>> [SHARK PRECISION] Funcionário: " + nomeUsuarioDb);
-            System.out.println("    Faturamento: " + faturamentoBruto + " | Comissão: " + saldoFinalVenda);
+            if (ultimoPgtoGeral.isPresent()) {
+                u.setDataUltimoPagamento(ultimoPgtoGeral.get());
+                u.setDiasSemPagamento(ChronoUnit.DAYS.between(ultimoPgtoGeral.get(), LocalDateTime.now()));
+            }
         }
 
         model.addAttribute("usuarios", usuarios);
-        model.addAttribute("pagamentos", pagamentoRepo.findTop10ByOrderByDataHoraDesc());
+        // Envia os pagamentos para o HTML poder "pescar" as datas individuais
+        model.addAttribute("pagamentos", pagamentoRepo.findTop50ByOrderByDataHoraDesc());
 
         return "funcionarios";
     }
@@ -120,7 +143,7 @@ public class AdminController {
             u.setComissaoOs(comissaoOs);
             u.setComissaoVenda(comissaoVenda);
             usuarioRepo.save(u);
-            ra.addFlashAttribute("mensagem", "Configurações de " + u.getNome() + " atualizadas!");
+            ra.addFlashAttribute("mensagem", "Configurações atualizadas!");
         });
         return "redirect:/admin/funcionarios";
     }
@@ -130,7 +153,7 @@ public class AdminController {
         usuarioRepo.findById(id).ifPresent(u -> {
             u.setAprovado(true);
             usuarioRepo.save(u);
-            ra.addFlashAttribute("mensagem", "Funcionário " + u.getNome() + " aprovado!");
+            ra.addFlashAttribute("mensagem", "Funcionário aprovado!");
         });
         return "redirect:/admin/funcionarios";
     }
@@ -139,7 +162,7 @@ public class AdminController {
     public String deletarFuncionario(@PathVariable Long id, RedirectAttributes ra) {
         if (usuarioRepo.existsById(id)) {
             usuarioRepo.deleteById(id);
-            ra.addFlashAttribute("mensagem", "Funcionário removido com sucesso.");
+            ra.addFlashAttribute("mensagem", "Funcionário removido.");
         }
         return "redirect:/admin/funcionarios";
     }
@@ -147,14 +170,12 @@ public class AdminController {
     @PostMapping("/cliente/deletar/{id}")
     public String deletarCliente(@PathVariable Long id, RedirectAttributes ra) {
         clienteRepo.deleteById(id);
-        ra.addFlashAttribute("mensagem", "Cliente removido.");
         return "redirect:/clientes";
     }
 
     @PostMapping("/ordem/deletar/{id}")
     public String deletarOrdem(@PathVariable Long id, RedirectAttributes ra) {
         ordemRepo.deleteById(id);
-        ra.addFlashAttribute("mensagem", "Ordem de Serviço excluída.");
         return "redirect:/ordens";
     }
 }

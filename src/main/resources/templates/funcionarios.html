@@ -3,329 +3,367 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout}">
 <head>
-  <title>Comissão de Funcionarios</title>
-  <meta th:if="${_csrf}" name="_csrf" th:content="${_csrf.token}"/>
-  <meta th:if="${_csrf}" name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <title>Gestão de Comissões - Shark Eletrônicos</title>
+  <th:block layout:fragment="estilos">
+    <style>
+      /* DESIGN SYSTEM SHARK UNIFICADO */
+      .shark-card {
+        background: #1a1a1a;
+        border-radius: 15px;
+        border: none;
+        border-left: 5px solid #333;
+        transition: all 0.3s ease;
+      }
 
-  <style>
-    /* DESIGN SYSTEM ADMIN SHARK */
-    .shark-card-admin {
-      background: rgba(15, 23, 42, 0.8);
-      border-radius: 15px;
-      border: 1px solid rgba(13, 202, 240, 0.2);
-      border-left: 5px solid #0dcaf0;
-      box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-    }
-    .table-admin thead {
-      background-color: #000;
-      color: #0dcaf0;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-    }
-    .table-admin tbody tr {
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-      transition: 0.3s;
-    }
-    .table-admin tbody tr:hover {
-      background: rgba(13, 202, 240, 0.05) !important;
-    }
-    .role-badge {
-      font-size: 0.6rem;
-      padding: 4px 10px;
-      border-radius: 4px;
-      font-weight: 800;
-      display: inline-block;
-    }
-    .role-tecnico { background: #6610f2; color: #fff; box-shadow: 0 0 10px rgba(102, 16, 242, 0.3); }
-    .role-vendedor { background: #0d6efd; color: #fff; box-shadow: 0 0 10px rgba(13, 110, 253, 0.3); }
-    .val-receber {
-      font-family: 'JetBrains Mono', 'Courier New', monospace;
-      font-size: 0.95rem;
-    }
-    .header-info-mini {
-      font-size: 0.65rem;
-      color: rgba(13, 202, 240, 0.7);
-      display: block;
-      text-transform: uppercase;
-      font-weight: bold;
-      margin-bottom: 2px;
-    }
-    .total-destaque {
-      background: rgba(255, 193, 7, 0.1);
-      border-radius: 8px;
-      padding: 8px;
-      color: #ffc107 !important;
-      font-size: 1.1rem;
-      border: 1px solid rgba(255, 193, 7, 0.2);
-    }
-    .modal-shark {
-      background: rgba(10, 15, 28, 0.98) !important;
-      border: 1px solid #0dcaf0 !important;
-      border-radius: 15px !important;
-      color: white;
-    }
-    .input-shark-dark {
-      background-color: #000 !important;
-      border: 1px solid #333 !important;
-      color: #fff !important;
-      border-radius: 8px !important;
-    }
-    .modal-backdrop { display: none !important; }
-    .pulse { animation: pulse-animation 2s infinite; }
-    @keyframes pulse-animation { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-    .btn-pagar {
-      background: #198754;
-      border: none;
-      color: white;
-      transition: 0.3s;
-    }
-    .btn-pagar:hover {
-      background: #157347;
-      transform: scale(1.05);
-    }
-  </style>
+      .card-ganhos-stats {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 1rem;
+        transition: 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 100%;
+        border-left: 4px solid #333;
+      }
+
+      .card-ganhos-stats:hover {
+        border-color: rgba(0, 212, 255, 0.3);
+        background: rgba(30, 41, 59, 0.8);
+        transform: translateY(-3px);
+      }
+
+      .border-left-info { border-left: 5px solid #0dcaf0 !important; }
+      .border-left-success { border-left: 5px solid #00c853 !important; }
+      .border-left-warning { border-left: 5px solid #ffc107 !important; }
+
+      .label-stats {
+        text-transform: uppercase;
+        font-size: 0.6rem;
+        letter-spacing: 1px;
+        color: #94a3b8;
+        font-weight: 700;
+        margin-bottom: 2px;
+      }
+      .valor-bruto {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.1rem;
+        color: #fff;
+        font-weight: 700;
+      }
+      .valor-comissao {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.3rem;
+        font-weight: 800;
+      }
+
+      .val-mono { font-family: 'JetBrains Mono', monospace !important; font-weight: 700; }
+
+      /* TABELA ESTILO GANHOS */
+      .table-shark-admin {
+        background: rgba(15, 23, 42, 0.5) !important;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .table-shark-admin thead {
+        background-color: #000;
+        color: #94a3b8;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+      }
+
+      .btn-pagar-venda { background: #0dcaf0; color: #000; border: none; font-weight: 700; font-size: 0.75rem; }
+      .btn-pagar-os { background: #198754; color: white; border: none; font-weight: 700; font-size: 0.75rem; }
+      .btn-pagar-venda:hover, .btn-pagar-os:hover { transform: scale(1.02); filter: brightness(1.1); }
+
+      .card-liquidado {
+        background: rgba(25, 135, 84, 0.1);
+        border: 1px solid #198754;
+        color: #198754;
+        padding: 5px;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+      }
+
+      .badge-data-pgto {
+        background: #000;
+        border: 1px solid #333;
+        font-size: 0.6rem;
+        min-width: 50px;
+        text-align: center;
+        padding: 4px;
+        border-radius: 5px;
+      }
+
+      /* FIX MODAL */
+      .modal-shark-content { background: #111 !important; border: 1px solid #444 !important; color: white !important; border-radius: 15px; }
+      .modal-backdrop { display: none !important; }
+      .modal { background: rgba(0, 0, 0, 0.8); }
+      .header-info-mini { font-size: 0.65rem; color: #0dcaf0; text-transform: uppercase; font-weight: 800; }
+      .aviso-trava { font-size: 0.65rem; color: #ffc107; background: rgba(255, 193, 7, 0.1); padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 193, 7, 0.2); display: none; }
+    </style>
+  </th:block>
 </head>
 
 <body>
 <div layout:fragment="conteudo">
-  <div class="mt-2">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
       <div>
-        <h2 class="fw-bold text-white mb-0">
-          <i class="bi bi-people-fill me-2" style="color: #0dcaf0"></i> Gestão de Equipe
-        </h2>
-        <p class="text-white-50 small mb-0">Shark Eletrônicos - Controle de Comissões</p>
+        <h2 class="fw-bold text-white mb-1"><i class="bi bi-people-fill me-2" style="color: #0dcaf0"></i> Gestão de Equipe</h2>
+        <p class="text-white-50 small mb-0">Shark Eletrônicos | Terminal de Liquidação Geral</p>
       </div>
-    </div>
-
-    <div class="card shark-card-admin overflow-hidden mb-5">
-      <div class="table-responsive">
-        <table class="table table-dark align-middle mb-0 text-center table-admin">
-          <thead>
-          <tr>
-            <th class="ps-4 text-start" style="width: 22%;">NOME / CARGO</th>
-            <th style="width: 15%;">TAXAS (%)</th>
-            <th style="width: 18%;">SERVIÇOS (O.S.)</th>
-            <th style="width: 18%;">VENDAS (PRODUTOS)</th>
-            <th style="width: 15%;">TOTAL A PAGAR</th>
-            <th style="width: 12%;">AÇÕES</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr th:each="u : ${usuarios}" th:with="osLiq=${u.totalComissaoOsAcumulada ?: 0.0}, vendaLiq=${u.saldoVendaCalculado ?: 0.0}">
-            <td class="ps-4 text-start">
-              <div class="fw-bold text-white fs-6" th:text="${u.nome}">Nome</div>
-              <div class="d-flex gap-1 mt-1">
-                <span th:if="${u.tipoFuncionario == 'TECNICO' or u.tipoFuncionario == 'HIBRIDO'}" class="role-badge role-tecnico">TÉCNICO</span>
-                <span th:if="${u.tipoFuncionario == 'VENDEDOR' or u.tipoFuncionario == 'HIBRIDO'}" class="role-badge role-vendedor">VENDEDOR</span>
-                <span th:if="${u.tipoFuncionario == null}" class="role-badge bg-secondary pulse">AGUARDANDO</span>
-              </div>
-            </td>
-
-            <td>
-              <div class="mb-2">
-                <span class="header-info-mini">Taxa O.S.</span>
-                <span class="text-white" th:text="${(u.comissaoOs ?: 0) + '%'}"></span>
-              </div>
-              <div>
-                <span class="header-info-mini">Taxa Vendas</span>
-                <span class="text-white" th:text="${(u.comissaoVenda ?: 0) + '%'}"></span>
-              </div>
-            </td>
-
-            <td class="val-receber">
-              <div class="mb-2">
-                <span class="header-info-mini text-success">Líquido O.S.</span>
-                <span class="text-white-50 small" th:text="${#numbers.formatCurrency(osLiq)}"></span>
-              </div>
-            </td>
-
-            <td class="val-receber">
-              <div class="mb-2">
-                <span class="header-info-mini text-info">Valor Bruto</span>
-                <span class="text-white-50 small" th:text="${#numbers.formatCurrency(u.brutoVendaCalculado ?: 0.0)}"></span>
-              </div>
-              <div>
-                <span class="header-info-mini text-info">Valor Líquido</span>
-                <span class="text-info fw-bold" th:text="${#numbers.formatCurrency(vendaLiq)}"></span>
-              </div>
-            </td>
-
-            <td class="val-receber">
-              <span class="header-info-mini text-warning">Total Acumulado</span>
-              <div class="total-destaque fw-bold" th:text="${#numbers.formatCurrency(osLiq + vendaLiq)}"></div>
-            </td>
-
-            <td class="pe-4">
-              <div class="d-flex flex-column gap-2 align-items-center">
-                <form th:if="${!u.aprovado}" th:action="@{/admin/funcionarios/aprovar/{id}(id=${u.id})}" method="post" class="w-100">
-                  <button type="submit" class="btn btn-sm btn-success w-100 fw-bold">ACEITAR</button>
-                </form>
-
-                <button th:if="${u.aprovado}"
-                        class="btn btn-sm btn-pagar w-100 fw-bold"
-                        th:attr="data-id=${u.id}, data-nome=${u.nome}, data-saldo-os=${osLiq}, data-saldo-venda=${vendaLiq}"
-                        onclick="prepararPagamento(this)">
-                  PAGAR
-                </button>
-
-                <div class="d-flex gap-1 w-100">
-                  <button th:if="${u.aprovado}" class="btn btn-sm btn-outline-info w-100"
-                          th:attr="data-id=${u.id}, data-nome=${u.nome}, data-tipo=${u.tipoFuncionario}, data-com-os=${u.comissaoOs}, data-com-venda=${u.comissaoVenda}"
-                          onclick="popularDados(this)">
-                    <i class="bi bi-gear"></i>
-                  </button>
-                  <form th:action="@{/admin/funcionarios/deletar/{id}(id=${u.id})}" method="post" class="w-100">
-                    <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Remover?')">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </td>
-          </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="mt-5 mb-5">
-      <h4 class="text-white fw-bold mb-3"><i class="bi bi-clock-history me-2 text-info"></i> Histórico</h4>
-      <div class="card shark-card-admin overflow-hidden">
-        <div class="table-responsive">
-          <table class="table table-dark align-middle mb-0 text-center table-admin">
-            <thead>
-            <tr>
-              <th class="ps-4 text-start">Funcionário</th>
-              <th>Data</th>
-              <th class="pe-4 text-warning">Valor Abatido</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="p : ${pagamentos}">
-              <td class="ps-4 text-start fw-bold text-white" th:text="${p.nomeFuncionario}"></td>
-              <td class="text-white-50 small" th:text="${#temporals.format(p.dataHora, 'dd/MM/yyyy HH:mm')}"></td>
-              <td class="pe-4 text-success fw-bold" th:text="${#numbers.formatCurrency(p.valorPago)}"></td>
-            </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="modalComissao" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content modal-shark">
-          <div class="modal-header border-0">
-            <h5 class="modal-title fw-bold">Configurar: <span id="nomeFuncModal" class="text-info"></span></h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="limparForçado()"></button>
-          </div>
-          <div class="modal-body p-4">
-            <input type="hidden" id="idFuncModal">
-            <div class="mb-4">
-              <label class="form-label text-info small fw-bold">CARGO</label>
-              <select id="tipoFuncModal" class="form-select input-shark-dark">
-                <option value="VENDEDOR">VENDEDOR</option>
-                <option value="TECNICO">TÉCNICO</option>
-                <option value="HIBRIDO">HÍBRIDO</option>
-              </select>
-            </div>
-            <div class="row">
-              <div class="col-6 mb-3">
-                <label class="form-label text-success small fw-bold">O.S. (%)</label>
-                <input type="number" id="osFuncModal" class="form-control input-shark-dark" step="0.1">
-              </div>
-              <div class="col-6 mb-3">
-                <label class="form-label text-info small fw-bold">VENDAS (%)</label>
-                <input type="number" id="vendaFuncModal" class="form-control input-shark-dark" step="0.1">
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer border-0">
-            <button type="button" onclick="salvarConfig(event)" class="btn btn-info w-100 fw-bold text-dark">ATUALIZAR CONFIGURAÇÕES</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="modalPagamento" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content modal-shark">
-          <form th:action="@{/pagamentos/registrar}" method="post" id="formPagamento">
-            <div class="modal-header border-0">
-              <h5 class="modal-title fw-bold">Pagar: <span id="nomePagModal" class="text-success"></span></h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="limparForçado()"></button>
-            </div>
-            <div class="modal-body p-4">
-              <input type="hidden" name="funcionarioId" id="idPagModal">
-              <div class="mb-4">
-                <label class="form-label text-white-50 small fw-bold">TIPO</label>
-                <select id="tipoComissaoModal" name="tipoComissao" class="form-select input-shark-dark" onchange="alternarSaldoModal()">
-                  <option value="OS">COMISSÃO O.S.</option>
-                  <option value="VENDA">COMISSÃO VENDAS</option>
-                </select>
-              </div>
-              <div class="text-center mb-4 p-3 bg-black rounded border border-success">
-                <small class="text-white-50 d-block" id="labelSaldoModal">DISPONÍVEL O.S.</small>
-                <h3 class="text-success fw-bold mb-0" id="saldoDisponivelModal">R$ 0,00</h3>
-              </div>
-              <div class="mb-2">
-                <label class="form-label text-white-50 small fw-bold">VALOR (R$)</label>
-                <input type="number" name="valorPago" id="valorPagInput" class="form-control input-shark-dark form-control-lg text-center fw-bold" step="0.01" required>
-              </div>
-            </div>
-            <div class="modal-footer border-0">
-              <button type="submit" class="btn btn-success w-100 fw-bold">CONFIRMAR PAGAMENTO</button>
-            </div>
-          </form>
-        </div>
+      <div class="text-end">
+        <span class="badge bg-dark border border-secondary p-2 val-mono">
+          <i class="bi bi-calendar3 me-2 text-info"></i>
+          <span th:text="${#dates.format(#dates.createNow(), 'dd/MM/yyyy')}"></span>
+        </span>
       </div>
     </div>
   </div>
 
+  <div class="row g-3 mb-5">
+    <div class="col-md-4">
+      <div class="card-ganhos-stats border-left-info">
+        <span class="label-stats text-info"><i class="bi bi-graph-up-arrow me-1"></i> Faturamento Bruto Loja</span>
+        <span class="valor-bruto" th:text="${#numbers.formatCurrency(#aggregates.sum(usuarios.![brutoVendaCalculado + brutoOsCalculado]) ?: 0.0)}"></span>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card-ganhos-stats border-left-success">
+        <span class="label-stats text-success"><i class="bi bi-cash-stack me-1"></i> Comissões Pendentes</span>
+        <span class="valor-comissao text-success" th:text="${#numbers.formatCurrency(#aggregates.sum(usuarios.![saldoVendaCalculado + totalComissaoOsAcumulada]) ?: 0.0)}"></span>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card-ganhos-stats border-left-warning">
+        <span class="label-stats text-warning"><i class="bi bi-person-check me-1"></i> Colaboradores Ativos</span>
+        <span class="valor-bruto" th:text="${#lists.size(usuarios)}"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shark-card border-left-info shadow-lg mb-5" style="background: rgba(15, 23, 42, 0.6) !important;">
+    <div class="table-responsive">
+      <table class="table table-hover table-dark mb-0 align-middle text-center table-shark-admin">
+        <thead>
+        <tr>
+          <th class="ps-4 text-start">COLABORADOR</th>
+          <th>BRUTO ACUMULADO</th>
+          <th>TAXA (%)</th>
+          <th>LÍQUIDO (PENDENTE)</th>
+          <th style="width: 280px;">AÇÃO DIRETA</th>
+          <th class="pe-4 text-end">AJUSTES</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="u : ${usuarios}"
+            th:with="liqOs=${u.totalComissaoOsAcumulada ?: 0.0},
+                     liqVenda=${u.saldoVendaCalculado ?: 0.0}">
+
+          <td class="ps-4 text-start">
+            <div class="fw-bold text-white fs-6"><i class="bi bi-person-circle me-2 text-white-50"></i><span th:text="${u.nome}">Shark</span></div>
+            <span th:if="${u.aprovado}" class="text-info-50 val-mono" style="font-size: 0.65rem;" th:text="${u.tipoFuncionario}">Cargo</span>
+            <span th:if="${!u.aprovado}" class="badge bg-warning text-dark fw-bold" style="font-size: 0.6rem;">AGUARDANDO APROVAÇÃO</span>
+          </td>
+
+          <td class="val-mono" style="font-size: 0.75rem;">
+            <div class="text-white-50"><i class="bi bi-tools me-1"></i>Serviços: [[${#numbers.formatCurrency(u.brutoOsCalculado ?: 0.0)}]]</div>
+            <div class="text-white-50"><i class="bi bi-cart-fill me-1"></i>Vendas: [[${#numbers.formatCurrency(u.brutoVendaCalculado ?: 0.0)}]]</div>
+          </td>
+
+          <td class="small">
+            <div class="text-info fw-bold"><i class="bi bi-tools me-1"></i>Serviços: [[${u.comissaoOs ?: 0}]]%</div>
+            <div class="text-info fw-bold"><i class="bi bi-cart-fill me-1"></i>Vendas: [[${u.comissaoVenda ?: 0}]]%</div>
+          </td>
+
+          <td class="val-mono">
+            <div th:class="${liqOs > 0.01 ? 'text-success' : 'text-white-50'}" style="font-size: 0.9rem;"><i class="bi bi-tools me-1"></i>Serviços: [[${#numbers.formatCurrency(liqOs)}]]</div>
+            <div th:class="${liqVenda > 0.01 ? 'text-info' : 'text-white-50'}" style="font-size: 0.9rem;"><i class="bi bi-cart-fill me-1"></i>Vendas: [[${#numbers.formatCurrency(liqVenda)}]]</div>
+          </td>
+
+          <td>
+            <form th:if="${!u.aprovado}" th:action="@{/admin/funcionarios/aprovar/{id}(id=${u.id})}" method="post">
+              <button type="submit" class="btn btn-sm btn-info fw-bold w-100 py-2"><i class="bi bi-person-check-fill me-2"></i>ACEITAR NOVO</button>
+            </form>
+
+            <div th:if="${u.aprovado}">
+              <div class="d-flex align-items-center gap-2 mb-1" th:if="${liqVenda > 0.01}">
+                <button type="button" class="btn btn-sm btn-pagar-venda fw-bold flex-grow-1 py-1"
+                        th:attr="onclick=|pagarDireto('${u.id}', '${liqVenda}', 'VENDA')|">
+                  <i class="bi bi-cart-check-fill me-1"></i> PAGAR VENDAS
+                </button>
+                <div th:if="${liqVenda > 0.01}" class="badge-data-pgto val-mono text-info">
+                  <th:block th:each="p : ${pagamentos}" th:if="${p.nomeFuncionario == u.nome && p.tipoComissao == 'VENDA'}">
+                    <span th:if="${pStat.first}" th:text="${#temporals.format(p.dataHora, 'dd/MM')}"></span>
+                  </th:block>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-2 mb-1" th:if="${liqOs > 0.01}">
+                <button type="button" class="btn btn-sm btn-pagar-os fw-bold flex-grow-1 py-1"
+                        th:attr="onclick=|pagarDireto('${u.id}', '${liqOs}', 'OS')|">
+                  <i class="bi bi-tools me-1"></i> PAGAR SERVIÇOS
+                </button>
+                <div th:if="${liqOs > 0.01}" class="badge-data-pgto val-mono text-success">
+                  <th:block th:each="p : ${pagamentos}" th:if="${p.nomeFuncionario == u.nome && p.tipoComissao == 'OS'}">
+                    <span th:if="${pStat.first}" th:text="${#temporals.format(p.dataHora, 'dd/MM')}"></span>
+                  </th:block>
+                </div>
+              </div>
+
+              <div th:if="${liqVenda <= 0.01 and liqOs <= 0.01}" class="card-liquidado p-2" style="background: rgba(25, 135, 84, 0.1); border: 1px solid rgba(25, 135, 84, 0.3); height: auto;">
+                <div class="text-center border-bottom border-success border-opacity-25 mb-1 pb-1">
+                  <span style="font-size: 0.6rem; color: #198754;"><i class="bi bi-check-all me-1"></i>SALDO ZERADO</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-1 px-1">
+                  <span style="font-size: 0.5rem; color: #0dcaf0; font-weight: 800;">VENDAS:</span>
+                  <span class="val-mono text-white-50" style="font-size: 0.58rem;">
+                    <th:block th:each="p : ${pagamentos}" th:if="${p.nomeFuncionario == u.nome && p.tipoComissao == 'VENDA'}">
+                      <span th:if="${pStat.first}" th:text="${#temporals.format(p.dataHora, 'dd/MM/yyyy HH:mm')}"></span>
+                    </th:block>
+                  </span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center px-1">
+                  <span style="font-size: 0.5rem; color: #00c853; font-weight: 800;">SERVIÇOS:</span>
+                  <span class="val-mono text-white-50" style="font-size: 0.58rem;">
+                    <th:block th:each="p : ${pagamentos}" th:if="${p.nomeFuncionario == u.nome && p.tipoComissao == 'OS'}">
+                      <span th:if="${pStat.first}" th:text="${#temporals.format(p.dataHora, 'dd/MM/yyyy HH:mm')}"></span>
+                    </th:block>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <td class="pe-4 text-end">
+            <div class="btn-group gap-1">
+              <button class="btn btn-sm btn-outline-info"
+                      type="button"
+                      data-bs-toggle="modal"
+                      data-bs-target="#modalComissao"
+                      th:attr="data-id=${u.id}, data-nome=${u.nome}, data-tipo=${u.tipoFuncionario}, data-com-os=${u.comissaoOs}, data-com-venda=${u.comissaoVenda}, data-liq-os=${liqOs}, data-liq-venda=${liqVenda}"
+                      onclick="popularDados(this)">
+                <i class="bi bi-gear-fill"></i>
+              </button>
+              <form th:action="@{/admin/funcionarios/deletar/{id}(id=${u.id})}" method="post" class="d-inline">
+                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Excluir funcionário permanentemente?')">
+                  <i class="bi bi-person-x-fill"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card shark-card border-left-success" style="background: rgba(0,0,0,0.4) !important;">
+    <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
+      <h5 class="fw-bold text-white mb-0 small text-uppercase"><i class="bi bi-clock-history me-2 text-success"></i> Histórico de Movimentações Recentes</h5>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-dark table-shark-admin table-sm mb-0 align-middle text-center">
+        <thead class="bg-black">
+        <tr>
+          <th class="ps-4 py-2">Data</th>
+          <th>Pagador</th>
+          <th>Recebedor</th>
+          <th>Tipo</th>
+          <th class="pe-4 text-end">Valor</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="p : ${pagamentos}">
+          <td class="ps-4 py-3 text-white-50 val-mono x-small" th:text="${#temporals.format(p.dataHora, 'dd/MM HH:mm')}"></td>
+          <td class="fw-bold text-info" th:text="${p.responsavelPagamento}"></td>
+          <td class="text-white" th:text="${p.nomeFuncionario}"></td>
+          <td><span th:class="${p.tipoComissao == 'VENDA' ? 'badge bg-info text-dark px-2 fw-bold' : 'badge bg-success text-white px-2 fw-bold'}" th:text="${p.tipoComissao}" style="font-size: 0.6rem;"></span></td>
+          <td class="pe-4 text-end text-success fw-bold val-mono fs-6" th:text="${#numbers.formatCurrency(p.valorPago)}"></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <form id="formPagamentoDireto" th:action="@{/pagamentos/registrar}" method="post" style="display: none;">
+    <input type="hidden" name="funcionarioId" id="inputFuncId">
+    <input type="hidden" name="valorPago" id="inputValor">
+    <input type="hidden" name="tipoComissao" id="inputTipo">
+  </form>
+
+  <div class="modal fade" id="modalComissao" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-shark-content">
+        <div class="modal-header border-secondary">
+          <h5 class="text-white fw-bold modal-title"><i class="bi bi-sliders me-2 text-info"></i>Configurar Taxas</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 text-start">
+          <div id="avisoTrava" class="aviso-trava mb-3">
+            <i class="bi bi-lock-fill me-1"></i> Taxas bloqueadas. Liquide os saldos pendentes antes de alterar as porcentagens.
+          </div>
+          <input type="hidden" id="idFuncModal">
+          <div class="mb-3">
+            <label class="header-info-mini mb-2">Função do Colaborador</label>
+            <select id="tipoFuncModal" class="form-select bg-black text-white border-secondary shadow-none">
+              <option value="VENDEDOR">VENDEDOR</option>
+              <option value="TECNICO">TÉCNICO</option>
+              <option value="HIBRIDO">HÍBRIDO</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-4">
+            <div class="col-6">
+              <label class="header-info-mini mb-2 text-info">Taxa OS (%)</label>
+              <input type="number" id="osFuncModal" class="form-control bg-black text-white border-secondary shadow-none">
+            </div>
+            <div class="col-6">
+              <label class="header-info-mini mb-2 text-info">Taxa Vendas (%)</label>
+              <input type="number" id="vendaFuncModal" class="form-control bg-black text-white border-secondary shadow-none">
+            </div>
+          </div>
+          <div class="d-grid gap-2">
+            <button type="button" id="btnSalvarModal" onclick="salvarConfig(event)" class="btn btn-info fw-bold py-2 text-dark">SALVAR ALTERAÇÕES</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">FECHAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<th:block layout:fragment="scripts">
   <script th:inline="javascript">
-    let saldoOsTemp = 0;
-    let saldoVendaTemp = 0;
-
-    function limparForçado() {
-      setTimeout(() => {
-        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = 'auto';
-      }, 300);
-    }
-
     function popularDados(btn) {
-      limparForçado();
+      const liqOs = parseFloat(btn.getAttribute('data-liq-os') || 0);
+      const liqVenda = parseFloat(btn.getAttribute('data-liq-venda') || 0);
+      const inputOs = document.getElementById('osFuncModal');
+      const inputVenda = document.getElementById('vendaFuncModal');
+      const btnSalvar = document.getElementById('btnSalvarModal');
+      const aviso = document.getElementById('avisoTrava');
+
       document.getElementById('idFuncModal').value = btn.getAttribute('data-id');
-      document.getElementById('nomeFuncModal').textContent = btn.getAttribute('data-nome');
       document.getElementById('tipoFuncModal').value = btn.getAttribute('data-tipo') || 'VENDEDOR';
-      document.getElementById('osFuncModal').value = btn.getAttribute('data-com-os') || 0;
-      document.getElementById('vendaFuncModal').value = btn.getAttribute('data-com-venda') || 0;
-      new bootstrap.Modal(document.getElementById('modalComissao')).show();
-    }
+      inputOs.value = btn.getAttribute('data-com-os') || 0;
+      inputVenda.value = btn.getAttribute('data-com-venda') || 0;
 
-    function prepararPagamento(btn) {
-      limparForçado();
-      saldoOsTemp = parseFloat(btn.getAttribute('data-saldo-os')) || 0;
-      saldoVendaTemp = parseFloat(btn.getAttribute('data-saldo-venda')) || 0;
-      document.getElementById('idPagModal').value = btn.getAttribute('data-id');
-      document.getElementById('nomePagModal').textContent = btn.getAttribute('data-nome');
-      document.getElementById('tipoComissaoModal').value = "OS";
-      alternarSaldoModal();
-      new bootstrap.Modal(document.getElementById('modalPagamento')).show();
-    }
-
-    function alternarSaldoModal() {
-      const tipo = document.getElementById('tipoComissaoModal').value;
-      const display = document.getElementById('saldoDisponivelModal');
-      const input = document.getElementById('valorPagInput');
-      let saldoAtual = (tipo === "OS") ? saldoOsTemp : saldoVendaTemp;
-      document.getElementById('labelSaldoModal').textContent = tipo === "OS" ? "DISPONÍVEL O.S." : "DISPONÍVEL VENDAS";
-      display.textContent = saldoAtual.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-      input.value = saldoAtual.toFixed(2);
-      input.max = saldoAtual.toFixed(2);
+      if (liqOs > 0.01 || liqVenda > 0.01) {
+        inputOs.disabled = true;
+        inputVenda.disabled = true;
+        btnSalvar.disabled = true;
+        aviso.style.display = 'block';
+      } else {
+        inputOs.disabled = false;
+        inputVenda.disabled = false;
+        btnSalvar.disabled = false;
+        aviso.style.display = 'none';
+      }
     }
 
     function salvarConfig(e) {
@@ -335,6 +373,7 @@
       payload.append('tipoFuncionario', document.getElementById('tipoFuncModal').value);
       payload.append('comissaoOs', document.getElementById('osFuncModal').value);
       payload.append('comissaoVenda', document.getElementById('vendaFuncModal').value);
+
       const token = document.querySelector('meta[name="_csrf"]')?.content;
       const header = document.querySelector('meta[name="_csrf_header"]')?.content;
 
@@ -344,7 +383,17 @@
         body: payload.toString()
       }).then(res => { if(res.ok) window.location.reload(); });
     }
+
+    function pagarDireto(funcId, valor, tipo) {
+      const rotulo = tipo === 'VENDA' ? 'VENDAS' : 'SERVIÇOS';
+      if(confirm("Confirmar pagamento de " + rotulo + " no valor de R$ " + parseFloat(valor).toFixed(2) + "?")) {
+        document.getElementById('inputFuncId').value = funcId;
+        document.getElementById('inputValor').value = valor;
+        document.getElementById('inputTipo').value = tipo;
+        document.getElementById('formPagamentoDireto').submit();
+      }
+    }
   </script>
-</div>
+</th:block>
 </body>
 </html>

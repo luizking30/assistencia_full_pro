@@ -1,6 +1,7 @@
 package com.assistencia.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "usuarios")
@@ -35,17 +36,33 @@ public class Usuario {
     private Double comissaoVenda = 0.0;
 
     // --- CAMPOS DE CÁLCULO (TRANSIENTES: Não salvam no banco, servem para o HTML) ---
-    // Usamos estes campos para mostrar o saldo atualizado na hora
-    @Transient
-    private Double totalComissaoOsAcumulada = 0.0;
 
     @Transient
-    private Double saldoVendaCalculado = 0.0;
+    private Double totalComissaoOsAcumulada = 0.0; // Agora representa o Líquido total a pagar
+
+    @Transient
+    private Double saldoVendaCalculado = 0.0;    // Agora representa o Líquido total a pagar
 
     @Transient
     private Double brutoVendaCalculado = 0.0;
 
-    // --- MÉTODO PARA O SALDO TOTAL ---
+    @Transient
+    private Double brutoOsCalculado = 0.0;
+
+    @Transient
+    private Double totalPagoOs = 0.0;
+
+    @Transient
+    private Double totalPagoVenda = 0.0;
+
+    // Novos campos para a lógica de "Zerar o Ciclo" e histórico
+    @Transient
+    private LocalDateTime dataUltimoPagamento;
+
+    @Transient
+    private Long diasSemPagamento;
+
+    // --- MÉTODOS DE APOIO ---
     public Double getSaldoTotalReceber() {
         double os = (totalComissaoOsAcumulada != null) ? totalComissaoOsAcumulada : 0.0;
         double vendas = (saldoVendaCalculado != null) ? saldoVendaCalculado : 0.0;
@@ -100,4 +117,19 @@ public class Usuario {
 
     public Double getBrutoVendaCalculado() { return brutoVendaCalculado; }
     public void setBrutoVendaCalculado(Double brutoVendaCalculado) { this.brutoVendaCalculado = brutoVendaCalculado; }
+
+    public Double getBrutoOsCalculado() { return brutoOsCalculado; }
+    public void setBrutoOsCalculado(Double brutoOsCalculado) { this.brutoOsCalculado = brutoOsCalculado; }
+
+    public Double getTotalPagoOs() { return totalPagoOs; }
+    public void setTotalPagoOs(Double totalPagoOs) { this.totalPagoOs = totalPagoOs; }
+
+    public Double getTotalPagoVenda() { return totalPagoVenda; }
+    public void setTotalPagoVenda(Double totalPagoVenda) { this.totalPagoVenda = totalPagoVenda; }
+
+    public LocalDateTime getDataUltimoPagamento() { return dataUltimoPagamento; }
+    public void setDataUltimoPagamento(LocalDateTime dataUltimoPagamento) { this.dataUltimoPagamento = dataUltimoPagamento; }
+
+    public Long getDiasSemPagamento() { return diasSemPagamento; }
+    public void setDiasSemPagamento(Long diasSemPagamento) { this.diasSemPagamento = diasSemPagamento; }
 }

@@ -127,6 +127,14 @@
                         <div>
                             <h6 class="text-info small fw-bold text-uppercase mb-2">Venda Líquida</h6>
                             <h3 class="text-info mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(vendaLiquidaHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
+                            <div class="mt-2">
+                                <small class="text-white-50 fw-bold d-block">
+                                    <i class="bi bi-pie-chart"></i> Lucro de Margem: <span th:text="${totalVendasValorHoje > 0 ? #numbers.formatDecimal((vendaLiquidaHoje / totalVendasValorHoje) * 100, 1, 'POINT', 1, 'COMMA') : '0'}">0</span>%
+                                </small>
+                                <small class="text-white-50 fw-bold d-block">
+                                    <i class="bi bi-arrow-up-right"></i> Lucro de Markup: <span th:text="${custoEstoqueHoje > 0 ? #numbers.formatDecimal((vendaLiquidaHoje / custoEstoqueHoje) * 100, 1, 'POINT', 1, 'COMMA') : '0'}">0</span>%
+                                </small>
+                            </div>
                         </div>
                         <i class="bi bi-gem text-info icon-large-side glow-info"></i>
                     </div>
@@ -166,6 +174,14 @@
                         <div>
                             <h6 class="text-info small fw-bold text-uppercase mb-2">Serviço Líquido</h6>
                             <h3 class="text-info mb-0 fw-bold">R$ <span th:text="${#numbers.formatDecimal(servicoLiquidoHoje, 1, 'POINT', 2, 'COMMA')}">0,00</span></h3>
+                            <div class="mt-2">
+                                <small class="text-white-50 fw-bold d-block">
+                                    <i class="bi bi-pie-chart"></i> Margem: <span th:text="${totalServicosHoje > 0 ? #numbers.formatDecimal((servicoLiquidoHoje / totalServicosHoje) * 100, 1, 'POINT', 1, 'COMMA') : '0'}">0</span>%
+                                </small>
+                                <small class="text-white-50 fw-bold d-block">
+                                    <i class="bi bi-arrow-up-right"></i> Markup: <span th:text="${totalGastoPecasHoje > 0 ? #numbers.formatDecimal((servicoLiquidoHoje / totalGastoPecasHoje) * 100, 1, 'POINT', 1, 'COMMA') : '0'}">0</span>%
+                                </small>
+                            </div>
                         </div>
                         <i class="bi bi-lightning-charge-fill text-info icon-large-side glow-info"></i>
                     </div>

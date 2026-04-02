@@ -2,7 +2,6 @@ package com.assistencia.controller;
 
 // 🚀 IMPORT ESSENCIAL PARA RESOLVER O SEU ERRO:
 import com.assistencia.model.Usuario;
-
 import com.assistencia.model.Cliente;
 import com.assistencia.model.OrdemServico;
 import com.assistencia.repository.ClienteRepository;
@@ -97,8 +96,14 @@ public class OrdemServicoController {
             os.setFuncionarioAbertura(logado != null ? logado.getNome() : "Sistema");
 
             if ("Entregue".equalsIgnoreCase(status)) {
-                os.setDataEntrega(LocalDateTime.now());
+                os.setDataEntrega(LocalDateTime.now()); // DATA DE CORTE FINANCEIRO
                 os.setFuncionarioEntrega(logado != null ? logado.getNome() : "Sistema");
+
+                // Gravação fixa da comissão no ato para evitar bugs de recálculo
+                if (logado != null && logado.getComissaoOs() != null) {
+                    double valorComissao = valor * (logado.getComissaoOs() / 100.0);
+                    os.setComissaoTecnicoValor(valorComissao);
+                }
             }
 
             ordemRepo.save(os);
@@ -132,10 +137,17 @@ public class OrdemServicoController {
             }
 
             if ("Entregue".equalsIgnoreCase(status)) {
-                os.setDataEntrega(LocalDateTime.now());
+                os.setDataEntrega(LocalDateTime.now()); // MARCO PARA DATA DE CORTE
                 os.setCustoPeca(custoPeca);
                 os.setFuncionarioEntrega(nomeLogado);
                 os.setTecnico(logado);
+
+                // Gravação FIXA da comissão no momento da entrega (Proteção contra mudança de taxa)
+                if (logado != null && logado.getComissaoOs() != null) {
+                    double liquido = os.getValorTotal() - custoPeca;
+                    double valorComissao = liquido * (logado.getComissaoOs() / 100.0);
+                    os.setComissaoTecnicoValor(valorComissao);
+                }
             }
 
             ordemRepo.save(os);

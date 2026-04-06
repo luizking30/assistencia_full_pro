@@ -22,7 +22,7 @@ public class Usuario {
     @Column(nullable = false)
     private String email;
 
-    @Column(length = 14) // Novo campo para o Pix do Mercado Pago
+    @Column(length = 14) // Novo campo para o Pix do Mercado Pago ou CPF do funcionário
     private String cpf;
 
     private String role;
@@ -43,6 +43,7 @@ public class Usuario {
     @JoinColumn(name = "empresa_id", nullable = false)
     private Empresa empresa;
 
+    // Campos @Transient: Existem apenas na memória do Java para cálculos, não vão para o Banco.
     @Transient
     private Double totalComissaoOsAcumulada = 0.0;
 
@@ -67,6 +68,9 @@ public class Usuario {
     @Transient
     private Long diasSemPagamento;
 
+    /**
+     * Lógica de Negócio: Soma o saldo de OS e Vendas para exibir o total a receber.
+     */
     public Double getSaldoTotalReceber() {
         double os = (totalComissaoOsAcumulada != null) ? totalComissaoOsAcumulada : 0.0;
         double vendas = (saldoVendaCalculado != null) ? saldoVendaCalculado : 0.0;
@@ -87,6 +91,7 @@ public class Usuario {
         this.empresa = empresa;
     }
 
+    // Getters e Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

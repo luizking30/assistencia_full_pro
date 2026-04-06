@@ -11,7 +11,10 @@ import java.util.Optional;
 @Repository
 public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComissao, Long> {
 
-    // 🔐 SEGURANÇA SaaS: Busca pagamentos de uma empresa específica com ordenação
+    /**
+     * 🔐 SEGURANÇA SaaS: Busca pagamentos de uma empresa específica com ordenação.
+     * Essencial para garantir que uma assistência não veja os pagamentos de outra.
+     */
     List<PagamentoComissao> findByEmpresaIdOrderByDataHoraDesc(Long empresaId);
 
     /**
@@ -21,6 +24,7 @@ public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComi
 
     /**
      * Busca o ÚLTIMO pagamento realizado para um funcionário (Geral).
+     * Retorna Optional para evitar erros caso o funcionário nunca tenha sido pago.
      */
     Optional<PagamentoComissao> findTopByFuncionarioIdOrderByDataHoraDesc(Long funcionarioId);
 
@@ -42,6 +46,7 @@ public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComi
 
     /**
      * Soma histórica de pagamentos para um funcionário (Total Geral).
+     * O COALESCE garante que retorne 0.0 em vez de null se não houver registros.
      */
     @Query("SELECT COALESCE(SUM(p.valorPago), 0.0) FROM PagamentoComissao p WHERE p.funcionarioId = :id")
     Double somarTotalPagoAoFuncionario(@Param("id") Long id);
@@ -58,6 +63,8 @@ public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComi
      */
     List<PagamentoComissao> findTop10ByEmpresaIdOrderByDataHoraDesc(Long empresaId);
 
-    // MÉTODOS GLOBAIS (CUIDADO: Use apenas se for SuperAdmin ou se o filtro Hibernate estiver ativo)
+    /**
+     * MÉTODOS GLOBAIS: Use com cuidado (Geralmente para relatórios de SuperAdmin).
+     */
     List<PagamentoComissao> findTop50ByOrderByDataHoraDesc();
 }

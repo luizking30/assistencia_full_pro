@@ -11,51 +11,47 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
 import java.time.LocalDateTime;
 
 @Controller
-@RequestMapping("/pagamentos")
-public class PagamentoController {
+@RequestMapping("/pagamentos/comissoes")
+public class PagamentoComissaoController {
 
     private final UsuarioRepository usuarioRepository;
     private final PagamentoComissaoRepository pagamentoComissaoRepository;
 
-    public PagamentoController(UsuarioRepository usuarioRepository,
-                               PagamentoComissaoRepository pagamentoComissaoRepository) {
+    public PagamentoComissaoController(UsuarioRepository usuarioRepository,
+                                       PagamentoComissaoRepository pagamentoComissaoRepository) {
         this.usuarioRepository = usuarioRepository;
         this.pagamentoComissaoRepository = pagamentoComissaoRepository;
     }
 
     @PostMapping("/registrar")
-    @Transactional // CRITICAL: Se o save do pagamento der certo mas o do usuário falhar, o Spring dá Rollback em tudo.
+    @Transactional // Garante que o registro do pagamento e o zeramento do saldo ocorram juntos
     public String registrarPagamento(@RequestParam("funcionarioId") Long id,
                                      @RequestParam("valorPago") Double valor,
                                      @RequestParam("tipoComissao") String tipoComissao,
                                      Authentication auth,
                                      RedirectAttributes attributes) {
 
+        // ✅ CORREÇÃO APLICADA: .orElse(null) resolve o erro de Incompatible Types (Optional -> Usuario)
         Usuario u = usuarioRepository.findById(id).orElse(null);
 
-        // 1. Validação: Só processa se o funcionário existir e o valor for real (> 0.01 centavo)
         if (u != null && valor != null && valor > 0.01) {
-
-            // 2. Cria o registro histórico do pagamento (Auditoria)
             PagamentoComissao novoPagamento = new PagamentoComissao();
             novoPagamento.setFuncionarioId(u.getId());
             novoPagamento.setNomeFuncionario(u.getNome());
             novoPagamento.setValorPago(valor);
-            novoPagamento.setTipoComissao(tipoComissao.toUpperCase()); // Ex: "OS", "VENDA" ou "TOTAL"
+            novoPagamento.setTipoComissao(tipoComissao.toUpperCase());
             novoPagamento.setDataHora(LocalDateTime.now());
 
             String adminNome = (auth != null) ? auth.getName() : "ADMIN_SHARK";
             novoPagamento.setResponsavelPagamento(adminNome);
 
-            // 3. Salva o histórico
+            // 1. Salva o histórico do pagamento
             pagamentoComissaoRepository.save(novoPagamento);
 
-            // 4. ATUALIZAÇÃO DE SALDO (O que faltava):
-            // Zera as comissões no objeto usuário de acordo com o que foi pago
+            // 2. Zera o saldo do funcionário no banco de dados conforme o tipo selecionado
             if (tipoComissao.equalsIgnoreCase("TOTAL")) {
                 u.setComissaoOs(0.0);
                 u.setComissaoVenda(0.0);
@@ -65,15 +61,14 @@ public class PagamentoController {
                 u.setComissaoVenda(0.0);
             }
 
-            // 5. Salva o usuário com saldo zerado no MySQL
+            // 3. Persiste a alteração do saldo no MySQL
             usuarioRepository.save(u);
 
-            attributes.addFlashAttribute("mensagem", "Pagamento de R$ " + String.format("%.2f", valor) + " para " + u.getNome() + " registrado e saldo liquidado!");
+            attributes.addFlashAttribute("mensagem", "Comissão de " + u.getNome() + " liquidada com sucesso!");
         } else {
-            attributes.addFlashAttribute("erro", "Erro: Usuário não encontrado ou valor de R$ " + valor + " é inválido para liquidação.");
+            attributes.addFlashAttribute("erro", "Dados inválidos: Usuário não encontrado ou valor insuficiente.");
         }
 
-        // Redireciona de volta para a lista de funcionários
         return "redirect:/admin/funcionarios";
     }
 }

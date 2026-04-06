@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+    <title>Pagamento Pix - Shark Eletrônicos</title>
+</head>
+<body>
+
+<div layout:fragment="conteudo">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card bg-dark border-primary shadow-lg" style="border-radius: 20px;">
+                <div class="card-body p-5 text-center">
+                    <h2 class="fw-bold text-white mb-4"><i class="bi bi-qr-code"></i> PAGAMENTO VIA PIX</h2>
+
+                    <p class="text-white-50">Escaneie o código abaixo com o aplicativo do seu banco:</p>
+
+                    <!-- QR CODE COM TRATAMENTO DE ERRO -->
+                    <div th:if="${qrCodeBase64 != null}" class="bg-white p-3 d-inline-block rounded-3 mb-4">
+                        <img th:src="'data:image/png;base64,' + ${qrCodeBase64}" alt="QR Code Pix" style="width: 250px;">
+                    </div>
+                    <div th:if="${qrCodeBase64 == null}" class="alert alert-danger mb-4">
+                        Erro ao gerar QR Code. Tente novamente.
+                    </div>
+
+                    <!-- Código Copia e Cola -->
+                    <div class="mb-4 text-start" th:if="${copiaECola != null}">
+                        <label class="form-label text-white-50 small">Código Copia e Cola:</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control bg-black text-info border-secondary small"
+                                   id="pixCode" th:value="${copiaECola}" readonly>
+                            <button class="btn btn-outline-info" type="button" onclick="copyPix()">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- INFO DE PAGAMENTO -->
+                    <div class="mb-3 text-white-50 small" th:if="${diasComprados != null}">
+                        <p>Dias comprados: <span th:text="${diasComprados}">0</span></p>
+                        <p>Valor: R$ <span th:text="${valorPago}">0.00</span></p>
+                    </div>
+
+                    <div class="alert alert-info border-0 bg-opacity-10 text-info small">
+                        <i class="bi bi-info-circle me-2"></i>
+                        O sistema será liberado automaticamente após a confirmação do pagamento.
+                    </div>
+
+                    <a th:href="@{/dashboard}" class="btn btn-outline-light w-100 mt-3">VOLTAR AO DASHBOARD</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block layout:fragment="scripts">
+    <script>
+        function copyPix() {
+            var copyText = document.getElementById("pixCode");
+            if (!copyText) {
+                alert("Código Pix não disponível para cópia.");
+                return;
+            }
+            navigator.clipboard.writeText(copyText.value).then(() => {
+                alert("Código Pix copiado!");
+            }).catch(() => {
+                alert("Falha ao copiar o código Pix.");
+            });
+        }
+    </script>
+</th:block>
+
+</body>
+</html>

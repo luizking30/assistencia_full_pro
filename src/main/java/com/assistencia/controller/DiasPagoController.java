@@ -49,58 +49,64 @@ public class DiasPagoController {
             RedirectAttributes ra) {
 
         try {
-            // Validação básica
+            // 1. Validação de segurança dos parâmetros
             if (quantidadeDias <= 0) {
                 ra.addFlashAttribute("mensagemErro", "Quantidade de dias inválida.");
                 return "redirect:/pagamento";
             }
 
             if (mpAccessToken == null || mpAccessToken.isBlank()) {
-                throw new RuntimeException("Access Token não configurado.");
+                throw new RuntimeException("Token de acesso não configurado no servidor.");
             }
 
-            // Configura token Mercado Pago
+            // 2. Configura Mercado Pago
             MercadoPagoConfig.setAccessToken(mpAccessToken.trim());
 
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             Usuario usuario = usuarioRepo.findByUsername(auth.getName()).orElse(null);
 
             if (usuario == null || usuario.getEmpresa() == null) {
-                ra.addFlashAttribute("mensagemErro", "Usuário ou empresa não encontrados.");
+                ra.addFlashAttribute("mensagemErro", "Perfil de usuário incompleto.");
                 return "redirect:/pagamento";
             }
 
-            if (usuario.getEmail() == null || usuario.getCpf() == null) {
-                ra.addFlashAttribute("mensagemErro", "Usuário sem email ou CPF cadastrados.");
+            // 3. Validação de dados do pagador
+            String email = usuario.getEmail();
+            String cpfLimpado = limparCpf(usuario.getCpf());
+
+            if (email == null || email.isBlank() || cpfLimpado == null || cpfLimpado.length() != 11) {
+                ra.addFlashAttribute("mensagemErro", "Dados cadastrais incompletos. Verifique seu CPF e E-mail.");
                 return "redirect:/pagamento";
             }
 
-            // Calcula valor total
+            // 4. Lógica de negócio (Custo de R$ 2,00 por dia)
             BigDecimal valorTotal = BigDecimal.valueOf(quantidadeDias)
                     .multiply(new BigDecimal("2.00"));
 
-            System.out.println("===== GERANDO PIX =====");
-            System.out.println("VALOR: " + valorTotal);
+            System.out.println("===== INICIANDO GERAÇÃO DE PIX =====");
+            System.out.println("Empresa: " + usuario.getEmpresa().getNome());
+            System.out.println("Valor: R$ " + valorTotal);
 
             PaymentClient client = new PaymentClient();
 
-            // Payer com CPF e email real
+            // 5. Construção do Payer
             PaymentPayerRequest payer = PaymentPayerRequest.builder()
-                    .email(usuario.getEmail())
+                    .email(email)
                     .firstName(usuario.getNome())
                     .identification(
                             IdentificationRequest.builder()
                                     .type("CPF")
-                                    .number(limparCpf(usuario.getCpf()))
+                                    .number(cpfLimpado)
                                     .build()
                     )
                     .build();
 
-            // Criar pagamento PIX
+            // 6. Requisição do Pagamento
             PaymentCreateRequest paymentRequest = PaymentCreateRequest.builder()
                     .transactionAmount(valorTotal)
-                    .description("Recarga: " + quantidadeDias + " dias")
+                    .description("Recarga Shark Eletrônicos: " + quantidadeDias + " dias")
                     .paymentMethodId("pix")
+                    // external_reference é fundamental para o Webhook saber qual empresa liberar
                     .externalReference(usuario.getEmpresa().getId() + ":" + quantidadeDias)
                     .payer(payer)
                     .build();
@@ -108,10 +114,10 @@ public class DiasPagoController {
             Payment payment = client.create(paymentRequest);
 
             if (payment == null || payment.getPointOfInteraction() == null) {
-                throw new RuntimeException("Erro ao gerar pagamento PIX.");
+                throw new RuntimeException("Mercado Pago não retornou dados de interação.");
             }
 
-            // Retorno do QR Code
+            // 7. Sucesso - Enviando dados para o Thymeleaf
             model.addAttribute("copiaECola",
                     payment.getPointOfInteraction().getTransactionData().getQrCode());
             model.addAttribute("qrCodeBase64",
@@ -122,23 +128,25 @@ public class DiasPagoController {
             return "pagamento_pix";
 
         } catch (MPApiException e) {
-            System.err.println("===== ERRO MERCADO PAGO =====");
-            System.err.println("Status: " + e.getApiResponse().getStatusCode());
-            System.err.println("Resposta: " + e.getApiResponse().getContent());
+            // LOG DE SERVIDOR (O que você vê no console)
+            System.err.println("===== ERRO API MERCADO PAGO =====");
+            System.err.println("Status HTTP: " + e.getApiResponse().getStatusCode());
+            System.err.println("JSON Erro: " + e.getApiResponse().getContent());
 
+            // MENSAGEM PARA O USUÁRIO (Segura e amigável)
             ra.addFlashAttribute("mensagemErro",
-                    "Erro MP: " + e.getApiResponse().getContent());
+                    "Não foi possível processar o Pix com o Mercado Pago. Verifique se o seu CPF é válido.");
             return "redirect:/pagamento";
 
         } catch (Exception e) {
+            // LOG DE ERRO GENÉRICO
             e.printStackTrace();
             ra.addFlashAttribute("mensagemErro",
-                    "Erro interno: " + e.getMessage());
+                    "Ocorreu um erro interno ao gerar o pagamento. Tente novamente em instantes.");
             return "redirect:/pagamento";
         }
     }
 
-    // Função utilitária para limpar CPF (somente números)
     private String limparCpf(String cpf) {
         if (cpf == null) return null;
         return cpf.replaceAll("[^0-9]", "");

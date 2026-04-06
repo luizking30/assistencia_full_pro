@@ -3,6 +3,7 @@ package com.assistencia.repository;
 import com.assistencia.model.Conta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -11,21 +12,25 @@ import java.util.List;
 @Repository
 public interface ContaRepository extends JpaRepository<Conta, Long> {
 
-    // 1. Busca padrão para o Dashboard (Ordenado por Vencimento)
+    // 1. 🔥 RESOLVE O ERRO: Busca contas de uma empresa específica ordenadas por vencimento
+    List<Conta> findByEmpresaIdOrderByDataVencimentoAsc(Long empresaId);
+
+    // 2. Busca específica para o Mês Atual por Empresa
+    List<Conta> findByEmpresaIdAndDataVencimentoBetween(Long empresaId, LocalDate inicio, LocalDate fim);
+
+    // 3. Busca apenas o que já foi PAGO por Empresa
+    List<Conta> findByEmpresaIdAndPagaTrueOrderByDataVencimentoDesc(Long empresaId);
+
+    // --- QUERIES DE SOMA SaaS (Filtradas por Empresa) ---
+
+    @Query("SELECT COALESCE(SUM(c.valor), 0.0) FROM Conta c WHERE c.empresa.id = :empresaId AND c.paga = true")
+    Double somarTotalPagoPorEmpresa(@Param("empresaId") Long empresaId);
+
+    @Query("SELECT COALESCE(SUM(c.valor), 0.0) FROM Conta c WHERE c.empresa.id = :empresaId AND c.paga = false AND c.dataVencimento BETWEEN :inicio AND :fim")
+    Double somarPendenteDoMesPorEmpresa(@Param("empresaId") Long empresaId,
+                                        @Param("inicio") LocalDate inicio,
+                                        @Param("fim") LocalDate fim);
+
+    // --- MANTIDOS PARA COMPATIBILIDADE (Opcional: remover após migrar tudo para os métodos acima) ---
     List<Conta> findAllByOrderByDataVencimentoAsc();
-
-    // 2. Busca específica para o Mês Atual (Usado no filtro do Controller)
-    List<Conta> findByDataVencimentoBetween(LocalDate inicio, LocalDate fim);
-
-    // 3. Busca apenas o que já foi PAGO (Para o Histórico debaixo)
-    List<Conta> findByPagaTrueOrderByDataVencimentoDesc();
-
-    // --- QUERIES DE SOMA (Opcionais, pois estamos somando via Stream no Controller) ---
-
-    @Query("SELECT SUM(c.valor) FROM Conta c WHERE c.paga = true")
-    Double somarTotalPagoGeral();
-
-    // Soma apenas o que não está pago dentro de um período específico
-    @Query("SELECT SUM(c.valor) FROM Conta c WHERE c.paga = false AND c.dataVencimento BETWEEN :inicio AND :fim")
-    Double somarPendenteDoMes(LocalDate inicio, LocalDate fim);
 }

@@ -22,7 +22,7 @@
       --shark-card-bg: #1e293b;
       --shark-white: #f8fafc;
       --nav-hover: rgba(0, 212, 255, 0.1);
-      --shark-confirm: #00c853; /* Verde neon para botões de salvar */
+      --shark-confirm: #00c853;
     }
     body {
       background-color: #0f172a;
@@ -32,7 +32,20 @@
       min-height: 100vh;
     }
 
-    /* --- BOTÕES TIPO SHARK --- */
+    /* CAMADA DE BLOQUEIO TOTAL */
+    .lock-screen {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(2, 6, 23, 0.95);
+      backdrop-filter: blur(15px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
     .btn {
       transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       font-weight: 600;
@@ -62,10 +75,9 @@
     }
     .btn-success:hover {
       background-color: var(--shark-confirm);
-      box-shadow: 0 0 15px rgba(0, 200, 83, 0.4);
+      box-shadow: 0 0 150px rgba(0, 200, 83, 0.4);
     }
 
-    /* --- NAVBAR --- */
     .navbar {
       background-color: var(--shark-black) !important;
       border-bottom: 2px solid var(--shark-blue);
@@ -108,6 +120,26 @@
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
 
+    .badge-financeiro {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid #334155;
+      padding: 5px 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-pagar {
+      background: #f59e0b;
+      color: #000;
+      border: none;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 5px;
+      font-weight: 800;
+    }
+
     @media (max-width: 768px) {
       main.container { padding: 15px; margin-top: 1rem; border-radius: 0; }
       .navbar-brand img { height: 40px; }
@@ -132,12 +164,29 @@
 
     .modal-backdrop { z-index: 1040 !important; }
     .modal { z-index: 1050 !important; }
+
+    .user-info-text {
+      line-height: 1.1;
+      text-align: right;
+    }
   </style>
 
   <th:block layout:fragment="estilos"></th:block>
 </head>
 
 <body>
+
+<div th:if="${usuarioLogado?.empresa?.diasRestantes <= 0}" class="lock-screen" id="sharkLockScreen">
+  <img th:src="@{/images/logo_layout.png}" alt="Shark" style="width: 250px; margin-bottom: 20px; filter: grayscale(1);">
+  <h2 class="text-danger fw-bold">ACESSO EXPIRADO</h2>
+  <p class="text-white-50 mb-4">Sua empresa possui 0 dias de acesso. Regularize sua assinatura para continuar utilizando o sistema.</p>
+  <a th:href="@{/pagamento}" class="btn btn-warning btn-lg px-5 fw-bold text-dark">
+    <i class="bi bi-credit-card-2-front me-2"></i>PAGAR AGORA
+  </a>
+  <form th:action="@{/logout}" method="post" class="mt-4">
+    <button type="submit" class="btn btn-link text-danger text-decoration-none small">Sair do Sistema</button>
+  </form>
+</div>
 
 <nav class="navbar navbar-expand-lg navbar-dark sticky-top shadow-lg">
   <div class="container-fluid">
@@ -150,17 +199,14 @@
     </button>
 
     <div class="collapse navbar-collapse" id="menu">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3" th:if="${usuarioLogado?.empresa?.diasRestantes > 0}">
         <li class="nav-item"><a class="nav-link" th:href="@{/dashboard}"><i class="bi bi-grid-1x2"></i> Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" th:href="@{/clientes}"><i class="bi bi-people"></i> Clientes</a></li>
         <li class="nav-item"><a class="nav-link" th:href="@{/estoque}"><i class="bi bi-cpu"></i> Estoque</a></li>
         <li class="nav-item"><a class="nav-link" th:href="@{/ordens}"><i class="bi bi-tools"></i> O.S.</a></li>
         <li class="nav-item"><a class="nav-link" th:href="@{/vendas}"><i class="bi bi-cart-check"></i> Vendas</a></li>
-
         <li class="nav-item"><a class="nav-link" th:href="@{/contas}"><i class="bi bi-cash-stack"></i> Contas</a></li>
-
         <li class="nav-item"><a class="nav-link" th:href="@{/relatorios}"><i class="bi bi-file-earmark-bar-graph"></i> Relatórios</a></li>
-
         <li class="nav-item"><a class="nav-link" th:href="@{/meus-ganhos}"><i class="bi bi-wallet2"></i> Meus Ganhos</a></li>
 
         <li class="nav-item" sec:authorize="hasRole('ADMIN')">
@@ -170,18 +216,30 @@
         </li>
       </ul>
 
+      <div class="navbar-nav me-auto ps-3" th:if="${usuarioLogado?.empresa?.diasRestantes <= 0}">
+        <span class="text-warning fw-bold"><i class="bi bi-exclamation-triangle"></i> ASSINATURA PENDENTE</span>
+      </div>
+
       <div class="d-flex align-items-center gap-3">
-        <div class="text-end d-none d-lg-block" sec:authorize="isAuthenticated()">
-          <small class="d-block text-uppercase fw-bold" style="font-size: 0.65rem; color: var(--shark-light-blue); letter-spacing: 1px;">
-            <span th:if="${usuarioLogado != null}" th:text="${usuarioLogado.tipoFuncionario}">TIPO</span>
-            <span th:unless="${usuarioLogado != null}" sec:authentication="principal.authorities">ROLE</span>
+        <div class="badge-financeiro">
+          <div class="text-end">
+            <small class="d-block text-white-50" style="font-size: 0.55rem; font-weight: 800;">DIAS PAGO</small>
+            <span class="fw-bold"
+                  th:classappend="${usuarioLogado?.empresa?.diasRestantes > 5 ? 'text-success' : 'text-warning'}"
+                  th:text="${usuarioLogado?.empresa?.diasRestantes ?: 0}">30</span>
+          </div>
+          <a th:href="@{/pagamento}" class="btn-pagar text-decoration-none">PAGAR</a>
+        </div>
+
+        <div class="user-info-text d-none d-lg-block" sec:authorize="isAuthenticated()">
+          <small class="d-block text-uppercase fw-bold" style="font-size: 0.62rem; color: #94a3b8; letter-spacing: 1px;">
+            <i class="bi bi-building me-1"></i> <span th:text="${usuarioLogado?.empresa?.nome}">UNIDADE PRINCIPAL</span>
           </small>
           <span style="color: #94a3b8; font-weight: 500; font-size: 0.8rem;">Bem-vindo,</span>
-          <span class="text-white fw-bold" style="text-shadow: 0 0 5px rgba(0, 212, 255, 0.4);" sec:authentication="name">Usuário</span>
+          <span class="text-white fw-bold" style="text-shadow: 0 0 5px rgba(0, 212, 255, 0.4);" th:text="${usuarioLogado?.nome}">Usuário</span>
         </div>
 
         <form th:action="@{/logout}" method="post" id="logoutForm" class="m-0">
-          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" th:if="${_csrf != null}"/>
           <button type="submit" class="btn-logout border-0 bg-transparent">
             <i class="bi bi-power"></i> <span class="d-lg-none">Sair</span>
           </button>
@@ -205,10 +263,15 @@
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
     document.body.style.paddingRight = '';
-    document.body.removeAttribute('data-bs-overflow');
-    document.body.removeAttribute('data-bs-padding-right');
   }
   document.addEventListener('hidden.bs.modal', sharkLimpeza);
+
+  // LOGICA PARA REMOVER O BLOQUEIO NA TELA DE PAGAMENTO VIA JS (Mais seguro que via Java)
+  if (window.location.pathname.includes('/pagamento')) {
+    const lock = document.getElementById('sharkLockScreen');
+    if (lock) lock.style.removeProperty('display');
+    if (lock) lock.style.display = 'none';
+  }
 </script>
 
 <th:block layout:fragment="scripts"></th:block>

@@ -16,6 +16,11 @@ public class PagamentoComissao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // --- RELACIONAMENTO SaaS (MULTITENANT) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id", nullable = false)
+    private Empresa empresa;
+
     // ID do funcionário para vincular o abatimento ao saldo dele
     private Long funcionarioId;
 
@@ -37,9 +42,10 @@ public class PagamentoComissao {
     // Construtor Padrão (Obrigatório pelo JPA)
     public PagamentoComissao() {}
 
-    // Construtor Auxiliar para facilitar a criação (Atualizado)
-    public PagamentoComissao(Long funcionarioId, String nomeFuncionario, Double valorPago,
+    // Construtor Auxiliar para facilitar a criação (Atualizado com Empresa)
+    public PagamentoComissao(Empresa empresa, Long funcionarioId, String nomeFuncionario, Double valorPago,
                              LocalDateTime dataHora, String responsavelPagamento, String tipoComissao) {
+        this.empresa = empresa;
         this.funcionarioId = funcionarioId;
         this.nomeFuncionario = nomeFuncionario;
         this.valorPago = valorPago;
@@ -56,6 +62,14 @@ public class PagamentoComissao {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Empresa getEmpresa() {
+        return empresa;
+    }
+
+    public void setEmpresa(Empresa empresa) {
+        this.empresa = empresa;
     }
 
     public Long getFuncionarioId() {

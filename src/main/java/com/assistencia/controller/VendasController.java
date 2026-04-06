@@ -15,6 +15,8 @@ import com.itextpdf.kernel.geom.PageSize;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +30,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
@@ -46,13 +48,16 @@ public class VendasController {
     }
 
     /**
-     * Exibe a tela de PDV (Vendas) com TODO o histórico do período.
-     * Alterado de findByDataHoraBetween para findAll() para mostrar tudo.
+     * Exibe a tela de PDV (Vendas) filtrada pela empresa do usuário.
      */
     @GetMapping
     public String novaVenda(Model model) {
-        // 🚀 MUDANÇA AQUI: Agora busca todas as vendas do banco, não só as de hoje.
-        List<Venda> todasVendas = vendaRepo.findAll();
+        Usuario logado = getUsuarioLogado();
+        if (logado == null) return "redirect:/login";
+        Long empresaId = logado.getEmpresa().getId();
+
+        // 🔐 SEGURANÇA SaaS: Busca apenas as vendas da empresa logada
+        List<Venda> todasVendas = vendaRepo.findByEmpresaIdOrderByDataHoraDesc(empresaId);
 
         Double totalAcumulado = todasVendas.stream()
                 .filter(v -> v.getValorTotal() != null)
@@ -71,8 +76,7 @@ public class VendasController {
     }
 
     /**
-     * Endpoint para busca dinâmica (Ajax).
-     * Ajustado para retornar tudo caso os filtros estejam vazios.
+     * Endpoint para busca dinâmica (Ajax) - Ajustado para SaaS.
      */
     @GetMapping("/filtrar")
     @ResponseBody
@@ -81,12 +85,15 @@ public class VendasController {
             @RequestParam(required = false) String data,
             @RequestParam(required = false) Long id) {
 
-        if ((vendedor == null || vendedor.isEmpty()) && (data == null || data.isEmpty()) && id == null) {
-            return vendaRepo.findAll();
-        }
+        Usuario logado = getUsuarioLogado();
+        if (logado == null) return new ArrayList<>();
+        Long empresaId = logado.getEmpresa().getId();
 
+        // Se filtrar por ID, verifica se pertence à empresa
         if (id != null) {
-            return vendaRepo.findById(id).map(List::of).orElse(new ArrayList<>());
+            return vendaRepo.findById(id)
+                    .filter(v -> v.getEmpresa().getId().equals(empresaId))
+                    .map(List::of).orElse(new ArrayList<>());
         }
 
         LocalDateTime dataInicio = (data != null && !data.isEmpty())
@@ -97,10 +104,11 @@ public class VendasController {
                 ? LocalDate.parse(data).atTime(LocalTime.MAX)
                 : LocalDateTime.now();
 
+        // RESOLVE O ERRO: Usa os métodos com EmpresaId que criamos no Repository
         if (vendedor != null && !vendedor.isEmpty()) {
-            return vendaRepo.findByVendedorNomeContainingIgnoreCaseAndDataHoraBetween(vendedor, dataInicio, dataFim);
+            return vendaRepo.findByEmpresaIdAndVendedorNomeContainingIgnoreCaseAndDataHoraBetween(empresaId, vendedor, dataInicio, dataFim);
         } else {
-            return vendaRepo.findByDataHoraBetween(dataInicio, dataFim);
+            return vendaRepo.findByEmpresaIdAndDataHoraBetween(empresaId, dataInicio, dataFim);
         }
     }
 
@@ -113,13 +121,11 @@ public class VendasController {
                 return "redirect:/vendas";
             }
 
-            if (auth == null || !auth.isAuthenticated()) {
-                throw new RuntimeException("Você precisa estar logado para realizar uma venda!");
-            }
+            Usuario vendedorObj = getUsuarioLogado();
+            if (vendedorObj == null) throw new RuntimeException("Sessão inválida!");
 
-            Usuario vendedorObj = usuarioRepo.findByUsername(auth.getName())
-                    .orElseThrow(() -> new RuntimeException("Vendedor logado não encontrado!"));
-
+            // 🔐 VINCULA A VENDA À EMPRESA DO VENDEDOR
+            venda.setEmpresa(vendedorObj.getEmpresa());
             venda.setVendedor(vendedorObj);
             venda.setDataHora(LocalDateTime.now());
             venda.setPago(false);
@@ -134,10 +140,15 @@ public class VendasController {
                 if (item.getProduto() == null || item.getProduto().getId() == null) continue;
 
                 Produto prod = produtoRepo.findById(item.getProduto().getId())
-                        .orElseThrow(() -> new RuntimeException("Produto não encontrado: ID " + item.getProduto().getId()));
+                        .orElseThrow(() -> new RuntimeException("Produto não encontrado!"));
+
+                // Validação de segurança: o produto pertence à mesma empresa da venda?
+                if (!prod.getEmpresa().getId().equals(vendedorObj.getEmpresa().getId())) {
+                    throw new RuntimeException("Produto inválido para esta loja!");
+                }
 
                 if (prod.getQuantidade() < item.getQuantidade()) {
-                    throw new RuntimeException("Estoque insuficiente para: " + prod.getNome());
+                    throw new RuntimeException("Estoque insuficiente: " + prod.getNome());
                 }
 
                 item.setProduto(prod);
@@ -153,22 +164,12 @@ public class VendasController {
 
             venda.setValorTotal(totalCalculado);
             venda.setCustoTotalEstoque(custoTotalAcumulado);
-
-            double valorComissaoCalculada = (totalCalculado * taxaAtual) / 100;
-            venda.setComissaoVendedorValor(valorComissaoCalculada);
+            venda.setComissaoVendedorValor((totalCalculado * taxaAtual) / 100);
 
             vendaRepo.save(venda);
-
-            // Atualização imediata do saldo para compatibilidade com lógica de data de corte
-            if (valorComissaoCalculada > 0) {
-                double saldoAnterior = (vendedorObj.getSaldoVendaCalculado() != null) ? vendedorObj.getSaldoVendaCalculado() : 0.0;
-                vendedorObj.setSaldoVendaCalculado(saldoAnterior + valorComissaoCalculada);
-                usuarioRepo.save(vendedorObj);
-            }
-
             ra.addFlashAttribute("sucesso", "Venda realizada com sucesso!");
         } catch (Exception e) {
-            ra.addFlashAttribute("erro", "Erro ao salvar venda: " + e.getMessage());
+            ra.addFlashAttribute("erro", "Erro ao salvar: " + e.getMessage());
         }
         return "redirect:/vendas";
     }
@@ -177,7 +178,14 @@ public class VendasController {
     @GetMapping("/pdf/{id}")
     public ResponseEntity<byte[]> gerarPdfVenda(@PathVariable Long id) {
         try {
+            Usuario logado = getUsuarioLogado();
             Venda v = vendaRepo.findById(id).orElseThrow(() -> new RuntimeException("Venda não encontrada"));
+
+            // Segurança: Só gera PDF se a venda for da empresa do usuário
+            if (!v.getEmpresa().getId().equals(logado.getEmpresa().getId())) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
@@ -186,18 +194,18 @@ public class VendasController {
 
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm");
 
-            doc.add(new Paragraph("SHARK ELETRÔNICOS").setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER));
-            doc.add(new Paragraph("Taguatinga - DF").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            // Nome dinâmico baseado na empresa logada
+            doc.add(new Paragraph(v.getEmpresa().getNome().toUpperCase()).setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER));
+            doc.add(new Paragraph("Cupom Não Fiscal").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             doc.add(new Paragraph("----------------------------------------").setTextAlignment(TextAlignment.CENTER));
 
             doc.add(new Paragraph("CUPOM #" + v.getId()).setBold().setFontSize(10).setTextAlignment(TextAlignment.CENTER));
             doc.add(new Paragraph("Data: " + v.getDataHora().format(fmt)).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-            doc.add(new Paragraph("Vendedor: " + (v.getVendedor() != null ? v.getVendedor().getNome() : "N/D")).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            doc.add(new Paragraph("Vendedor: " + v.getVendedor().getNome()).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             doc.add(new Paragraph("----------------------------------------").setTextAlignment(TextAlignment.CENTER));
 
             for (ItemVenda item : v.getItens()) {
-                String nomeProd = (item.getProduto() != null) ? item.getProduto().getNome() : "Produto";
-                doc.add(new Paragraph(item.getQuantidade() + "x " + nomeProd).setFontSize(8));
+                doc.add(new Paragraph(item.getQuantidade() + "x " + item.getProduto().getNome()).setFontSize(8));
                 doc.add(new Paragraph("Sub: R$ " + String.format("%.2f", item.getQuantidade() * item.getPrecoUnitario())).setFontSize(7).setItalic());
             }
 
@@ -209,7 +217,7 @@ public class VendasController {
 
             HttpHeaders h = new HttpHeaders();
             h.setContentType(MediaType.APPLICATION_PDF);
-            h.setContentDisposition(ContentDisposition.inline().filename("Cupom_Shark_" + v.getId() + ".pdf").build());
+            h.setContentDisposition(ContentDisposition.inline().filename("Venda_" + v.getId() + ".pdf").build());
             return new ResponseEntity<>(out.toByteArray(), h, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -221,16 +229,15 @@ public class VendasController {
     @PostMapping("/deletar/{id}")
     public String deletar(@PathVariable Long id, RedirectAttributes ra) {
         try {
+            Usuario logado = getUsuarioLogado();
             Venda v = vendaRepo.findById(id).orElseThrow(() -> new RuntimeException("Venda não encontrada"));
-            Usuario vendedorObj = v.getVendedor();
 
-            if (vendedorObj != null && v.getComissaoVendedorValor() != null && v.getComissaoVendedorValor() > 0) {
-                double valorEstorno = v.getComissaoVendedorValor();
-                double saldoAtual = (vendedorObj.getSaldoVendaCalculado() != null) ? vendedorObj.getSaldoVendaCalculado() : 0.0;
-                vendedorObj.setSaldoVendaCalculado(Math.max(0.0, saldoAtual - valorEstorno));
-                usuarioRepo.save(vendedorObj);
+            // Segurança SaaS: Validar se a venda pertence à empresa do admin
+            if (!v.getEmpresa().getId().equals(logado.getEmpresa().getId())) {
+                throw new RuntimeException("Acesso negado!");
             }
 
+            // Estorno de estoque
             for (ItemVenda i : v.getItens()) {
                 Produto p = i.getProduto();
                 if (p != null) {
@@ -240,10 +247,16 @@ public class VendasController {
             }
 
             vendaRepo.delete(v);
-            ra.addFlashAttribute("sucesso", "Venda #" + id + " deletada: Estoque e comissão estornados!");
+            ra.addFlashAttribute("sucesso", "Venda #" + id + " deletada e estoque estornado!");
         } catch (Exception e) {
-            ra.addFlashAttribute("erro", "Erro ao deletar venda: " + e.getMessage());
+            ra.addFlashAttribute("erro", "Erro ao deletar: " + e.getMessage());
         }
         return "redirect:/vendas";
+    }
+
+    private Usuario getUsuarioLogado() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
+        return usuarioRepo.findByUsername(login).orElse(null);
     }
 }

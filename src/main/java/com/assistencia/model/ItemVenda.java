@@ -18,7 +18,7 @@ public class ItemVenda {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "venda_id")
-    @ToString.Exclude // Evita erro de recursão ao dar print na Venda
+    @ToString.Exclude // Evita erro de recursão (Infinite Loop) ao dar print na Venda
     @EqualsAndHashCode.Exclude
     private Venda venda;
 
@@ -28,24 +28,30 @@ public class ItemVenda {
 
     private Integer quantidade;
 
-    // Preço FINAL que o cliente pagou por UNIDADE (já calculado com o desconto)
+    // Preço FINAL que o cliente pagou por UNIDADE
     private Double precoUnitario = 0.0;
 
-    // PORCENTAGEM do desconto aplicada neste item (ex: 5.0 para 5%)
+    // PORCENTAGEM do desconto aplicada neste item
     private Double desconto = 0.0;
+
+    // --- RELACIONAMENTO SaaS (MULTITENANT) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id", nullable = false)
+    private Empresa empresa;
 
     // Valor de entrada do produto no estoque (Preço de Custo no ato da venda)
     // 🚀 Essencial para calcular o lucro líquido real no Dashboard
     @Column(name = "custo_unitario")
     private Double custoUnitario = 0.0;
 
-    // Construtor personalizado para facilitar a criação via Controller, se necessário
-    public ItemVenda(Venda venda, Produto produto, Integer quantidade, Double precoUnitario, Double custoUnitario, Double desconto) {
+    // Construtor atualizado para o Padrão Shark (Sempre peça a empresa na criação)
+    public ItemVenda(Venda venda, Produto produto, Integer quantidade, Double precoUnitario, Double custoUnitario, Double desconto, Empresa empresa) {
         this.venda = venda;
         this.produto = produto;
         this.quantidade = quantidade;
         this.precoUnitario = precoUnitario;
         this.custoUnitario = custoUnitario;
         this.desconto = desconto;
+        this.empresa = empresa;
     }
 }

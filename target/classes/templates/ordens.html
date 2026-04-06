@@ -24,6 +24,12 @@
         .border-left-info { border-left-color: #0dcaf0 !important; }
         .glow-info { filter: drop-shadow(0 0 5px #0dcaf0); }
 
+        /* CORREÇÃO DO ÍCONE DO CALENDÁRIO NO MODO DARK */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1); /* Deixa o ícone branco para aparecer no fundo preto */
+            cursor: pointer;
+        }
+
         /* LISTA DE SUGESTÕES */
         .sugestoes-wrapper {
             background-color: #121212 !important;
@@ -105,15 +111,14 @@
             font-weight: bold;
         }
 
-        /* ESTILO DA TRILHA DE AUDITORIA */
         .auditoria-wrapper {
             font-size: 0.68rem;
-            line-height: 1.2;
-            color: #777;
+            line-height: 1.4;
+            color: #aaa;
         }
         .auditoria-item i {
             font-size: 0.75rem;
-            margin-right: 3px;
+            margin-right: 4px;
         }
     </style>
 </head>
@@ -225,39 +230,44 @@
                 <table class="table table-hover table-dark mb-0 align-middle">
                     <thead class="bg-black text-white-50 text-uppercase small">
                     <tr>
-                        <th class="ps-4">ID / Data</th>
+                        <th class="ps-4" style="min-width: 220px;">ID / DATAS</th>
                         <th>Cliente</th>
                         <th>Equipamento</th>
                         <th>Financeiro (R$)</th>
-                        <th>Status</th>
+                        <th>Status / Entrega</th>
                         <th class="text-center">Ações</th>
                     </tr>
                     </thead>
                     <tbody id="tabelaCorpo">
                     <tr th:each="o : ${ordens}" class="ordem-row">
                         <td class="ps-4">
-                            <span class="fw-bold text-info os-id-label" th:text="'#' + ${o.id}"></span><br>
-                            <small class="text-white-50 os-data-label" th:text="${#temporals.format(o.data, 'dd/MM/yy HH:mm')}"></small>
+                            <span class="fw-bold text-info os-id-label" th:text="'#' + ${o.id}"></span>
+                            <div class="auditoria-wrapper mt-1">
+                                <div class="auditoria-item small">
+                                    <i class="bi bi-person-plus text-info"></i> Aberta por: <span th:text="${o.funcionarioAbertura ?: 'Sistema'}"></span> em <span th:text="${#temporals.format(o.data, 'dd/MM/yy HH:mm')}"></span>
+                                </div>
+                                <div class="auditoria-item small" th:if="${o.dataAndamento != null}" style="color: #0dcaf0;">
+                                    <i class="bi bi-play-circle"></i> Iniciada por: <span th:text="${o.funcionarioAndamento}"></span> em <span th:text="${#temporals.format(o.dataAndamento, 'dd/MM/yy HH:mm')}"></span>
+                                </div>
+                                <div class="auditoria-item small text-success" th:if="${o.dataEntrega != null}">
+                                    <i class="bi bi-check-all"></i> Entregue por: <span th:text="${o.funcionarioEntrega}"></span> em <span th:text="${#temporals.format(o.dataEntrega, 'dd/MM/yy HH:mm')}"></span>
+                                </div>
+                            </div>
                         </td>
                         <td class="cliente-nome-col">
                             <div class="fw-bold text-white" th:text="${o.clienteNome}"></div>
-                            <small class="text-white-50" th:text="${o.clienteWhatsapp}"></small>
+                            <div class="small text-white-50 mb-1" th:text="'CPF: ' + ${o.clienteCpf ?: '---'}"></div>
+                            <a th:if="${o.clienteWhatsapp != null}"
+                               th:href="'https://wa.me/55' + ${#strings.replace(#strings.replace(#strings.replace(o.clienteWhatsapp, '(', ''), ')', ''), '-', '')}"
+                               target="_blank"
+                               class="fw-bold text-decoration-none"
+                               style="color: #25D366; font-size: 0.85rem;">
+                                <i class="bi bi-whatsapp me-1"></i><span th:text="${o.clienteWhatsapp}"></span>
+                            </a>
                         </td>
                         <td>
                             <span class="text-white" th:text="${o.produto}"></span><br>
                             <small class="text-info d-block mb-1" th:text="${o.defeito}"></small>
-
-                            <div class="auditoria-wrapper">
-                                <div class="auditoria-item text-white-50">
-                                    <i class="bi bi-person-plus text-info"></i> Aberta por: <span th:text="${o.funcionarioAbertura ?: 'Sistema'}"></span>
-                                </div>
-                                <div class="auditoria-item" th:id="'auditoria-andamento-' + ${o.id}" th:style="${o.funcionarioAndamento != null ? '' : 'display:none'}">
-                                    <i class="bi bi-play-circle text-primary"></i> Iniciada por: <span th:text="${o.funcionarioAndamento}"></span>
-                                </div>
-                                <div class="auditoria-item" th:id="'auditoria-entrega-' + ${o.id}" th:style="${o.funcionarioEntrega != null ? '' : 'display:none'}">
-                                    <i class="bi bi-check-all text-success"></i> Entregue por: <span th:text="${o.funcionarioEntrega}"></span>
-                                </div>
-                            </div>
                         </td>
                         <td>
                             <div class="valor-bruto-wrapper">
@@ -282,6 +292,14 @@
                             <span class="badge mb-1 d-block status-badge-text" th:id="'badge-' + ${o.id}" th:text="${o.status}"
                                   th:classappend="${o.status == 'Em análise' ? 'bg-warning text-dark' : (o.status == 'Em andamento' ? 'bg-primary' : (o.status == 'Pronto' ? 'bg-info text-dark' : 'bg-success'))}">
                             </span>
+
+                            <div th:if="${o.status == 'Entregue' and o.dataEntrega != null}" class="text-center mb-1">
+                                <small class="text-success fw-bold">
+                                    <i class="bi bi-calendar-check-fill me-1"></i>
+                                    <span th:text="${#temporals.format(o.dataEntrega, 'dd/MM/yy HH:mm')}"></span>
+                                </small>
+                            </div>
+
                             <select class="form-select form-select-sm status-select-ajax shadow-none"
                                     th:attr="data-id=${o.id}, data-status-atual=${o.status}, data-valor-total=${o.valorTotal}">
                                 <option value="Em análise" th:selected="${o.status == 'Em análise'}" th:disabled="${o.status != 'Em análise'}">Em análise</option>
@@ -376,7 +394,6 @@
 
             // --- LÓGICA DE ALTERAÇÃO DE STATUS E CÁLCULO DE LUCRO ---
             document.querySelectorAll('.status-select-ajax').forEach(select => {
-                // Roles e Tipo do usuário para controle via JS
                 const isAdmin = [[${#authorization.expression('hasRole(''ADMIN'')')}]];
                 const tipoFuncionario = [[${usuarioLogado != null ? usuarioLogado.tipoFuncionario : ''}]];
                 const podeOperarLaboratorio = isAdmin || tipoFuncionario === 'TECNICO' || tipoFuncionario === 'HIBRIDO';
@@ -388,14 +405,12 @@
                     const valorTotal = parseFloat(this.getAttribute('data-valor-total')) || 0;
                     const badge = document.getElementById('badge-' + id);
 
-                    // 1. Validar Permissão de Perfil
                     if ((novoStatus === 'Em andamento' || novoStatus === 'Pronto') && !podeOperarLaboratorio) {
                         alert("Acesso negado: Somente técnicos ou administradores podem iniciar ou finalizar serviços.");
                         this.value = statusAtual;
                         return;
                     }
 
-                    // 2. Validar Hierarquia (Não pode pular, não pode voltar)
                     const hierarquia = ['Em análise', 'Em andamento', 'Pronto', 'Entregue'];
                     const idxAtual = hierarquia.indexOf(statusAtual);
                     const idxNovo = hierarquia.indexOf(novoStatus);
@@ -440,45 +455,11 @@
                         .then(res => res.json())
                         .then(data => {
                             if(data.success) {
-                                badge.textContent = data.novoStatus;
-                                badge.className = 'badge mb-1 d-block status-badge-text ' + getBadgeClass(data.novoStatus);
-                                this.setAttribute('data-status-atual', data.novoStatus);
-
-                                // ATUALIZAÇÃO DA TRILHA DE FUNCIONÁRIOS (DOM)
-                                if (data.novoStatus === 'Em andamento') {
-                                    const divAnd = document.getElementById('auditoria-andamento-' + id);
-                                    if(divAnd) {
-                                        divAnd.style.display = 'block';
-                                        divAnd.querySelector('span').textContent = data.funcionario;
-                                    }
-                                }
-
-                                if(data.novoStatus === 'Entregue') {
-                                    const divEnt = document.getElementById('auditoria-entrega-' + id);
-                                    if(divEnt) {
-                                        divEnt.style.display = 'block';
-                                        divEnt.querySelector('span').textContent = data.funcionario;
-                                    }
-
-                                    if(custoPeca >= 0) {
-                                        const lucro = valorTotal - custoPeca;
-                                        document.getElementById('container-custo-' + id).style.display = 'block';
-                                        document.getElementById('container-lucro-' + id).style.display = 'block';
-                                        document.getElementById('gasto-pecas-' + id).textContent = `- R$ ${custoPeca.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-                                        document.getElementById('lucro-liquido-' + id).textContent = `= R$ ${lucro.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-                                    }
-                                }
-                                // Recarrega para aplicar os th:disabled do select baseados no novo status
                                 location.reload();
                             }
                         });
                 });
             });
-
-            function getBadgeClass(s) {
-                const c = {'Em análise':'bg-warning text-dark','Em andamento':'bg-primary','Pronto':'bg-info text-dark','Entregue':'bg-success'};
-                return c[s] || 'bg-secondary';
-            }
 
             // --- FILTROS E DELETE ---
             document.querySelectorAll('.btn-deletar').forEach(btn => {
@@ -493,23 +474,44 @@
 
             const buscaId = document.getElementById('buscaId');
             const buscaNome = document.getElementById('buscaNome');
+            const buscaData = document.getElementById('buscaData');
             const buscaStatus = document.getElementById('buscaStatus');
 
             function filtrar() {
                 const vId = buscaId.value.trim().replace('#', '').toLowerCase();
                 const vNome = buscaNome.value.trim().toLowerCase();
+                const vData = buscaData.value; // Formato yyyy-mm-dd
                 const vStatus = buscaStatus.value.toLowerCase();
 
                 document.querySelectorAll('.ordem-row').forEach(row => {
                     const rId = row.querySelector('.os-id-label').innerText.replace('#', '').toLowerCase();
                     const rNome = row.querySelector('.cliente-nome-col').innerText.toLowerCase();
                     const rStatus = row.querySelector('.status-badge-text').innerText.toLowerCase();
-                    row.style.display = ((vId === "" || rId === vId) && (vNome === "" || rNome.includes(vNome)) && (vStatus === "" || rStatus === vStatus)) ? "" : "none";
+
+                    // Lógica para busca por data (compara ano-mês-dia)
+                    let matchData = true;
+                    if (vData) {
+                        // Tenta extrair a data da primeira linha da auditoria (data de abertura)
+                        // Note: Isso depende de como o Thymeleaf renderiza a data.
+                        // Se rData for dd/MM/yy, precisamos converter para comparar.
+                        // Para facilitar, estamos mantendo o filtro de texto padrão ou exato se preferir.
+                        const rDataRaw = row.querySelector('.auditoria-item span').innerText; // Ex: 05/04/26
+                        const [d, m, y] = rDataRaw.split(' ')[0].split('/');
+                        const rDataFormatada = `20${y}-${m}-${d}`;
+                        matchData = (rDataFormatada === vData);
+                    }
+
+                    row.style.display = (
+                        (vId === "" || rId === vId) &&
+                        (vNome === "" || rNome.includes(vNome)) &&
+                        matchData &&
+                        (vStatus === "" || rStatus === vStatus)
+                    ) ? "" : "none";
                 });
             }
-            [buscaId, buscaNome, buscaStatus].forEach(el => el.addEventListener('input', filtrar));
+            [buscaId, buscaNome, buscaData, buscaStatus].forEach(el => el.addEventListener('input', filtrar));
             document.getElementById('btnReset').addEventListener('click', () => {
-                [buscaId, buscaNome, buscaStatus].forEach(el => el.value = "");
+                [buscaId, buscaNome, buscaData, buscaStatus].forEach(el => el.value = "");
                 filtrar();
             });
         });

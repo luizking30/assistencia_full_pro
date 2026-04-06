@@ -1,9 +1,13 @@
 package com.assistencia.controller;
 
+import com.assistencia.model.Usuario;
 import com.assistencia.repository.ClienteRepository;
+import com.assistencia.repository.UsuarioRepository;
 import com.assistencia.repository.VendaRepository;
 import com.assistencia.repository.OrdemServicoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,27 +28,43 @@ public class DashboardController {
     @Autowired
     private VendaRepository vendaRepository;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
+
+        // 1. RECUPERAR EMPRESA DO USUÁRIO LOGADO
+        Usuario logado = getUsuarioLogado();
+        if (logado == null || logado.getEmpresa() == null) {
+            return "redirect:/login";
+        }
+        Long empresaId = logado.getEmpresa().getId();
 
         // --- REFERÊNCIA DE HOJE ---
         LocalDate hoje = LocalDate.now();
         LocalDateTime inicioHoje = hoje.atStartOfDay();
         LocalDateTime fimHoje = hoje.atTime(LocalTime.MAX);
 
-        // 1. CONTADORES BÁSICOS (HOJE)
-        model.addAttribute("clientesHoje", clienteRepository.countByDataCadastroBetween(inicioHoje, fimHoje));
-        model.addAttribute("osCriadasHoje", ordemServicoRepository.countByDataBetween(inicioHoje, fimHoje));
-        model.addAttribute("vendasHoje", vendaRepository.countByDataHoraBetween(inicioHoje, fimHoje));
-        model.addAttribute("osEntreguesHoje", ordemServicoRepository.countByStatusAndDataEntregaBetween("Entregue", inicioHoje, fimHoje));
+        // 2. CONTADORES BÁSICOS (FILTRADOS POR EMPRESA)
+        // Usando os novos nomes de métodos que definimos no Repository
+        model.addAttribute("clientesHoje",
+                clienteRepository.countByEmpresaIdAndDataCadastroBetween(empresaId, inicioHoje, fimHoje));
 
-        // 2. FINANCEIRO: VENDAS (PRODUTOS)
-        // Valor total vendido hoje (Bruto)
-        Double totalVendasBruto = vendaRepository.somarVendasDoDia(inicioHoje, fimHoje);
+        model.addAttribute("osCriadasHoje",
+                ordemServicoRepository.countByEmpresaIdAndDataBetween(empresaId, inicioHoje, fimHoje));
+
+        model.addAttribute("vendasHoje",
+                vendaRepository.countByEmpresaIdAndDataHoraBetween(empresaId, inicioHoje, fimHoje));
+
+        model.addAttribute("osEntreguesHoje",
+                ordemServicoRepository.countByEmpresaIdAndStatusAndDataEntregaBetween(empresaId, "Entregue", inicioHoje, fimHoje));
+
+        // 3. FINANCEIRO: VENDAS (PRODUTOS)
+        Double totalVendasBruto = vendaRepository.somarVendasDoDia(empresaId, inicioHoje, fimHoje);
         totalVendasBruto = (totalVendasBruto != null) ? totalVendasBruto : 0.0;
 
-        // Custo de aquisição dos produtos vendidos (Estoque)
-        Double custoEstoque = vendaRepository.somarCustoEstoqueDasVendasDoDia(inicioHoje, fimHoje);
+        Double custoEstoque = vendaRepository.somarCustoEstoqueDasVendasDoDia(empresaId, inicioHoje, fimHoje);
         custoEstoque = (custoEstoque != null) ? custoEstoque : 0.0;
 
         Double vendaLiquida = totalVendasBruto - custoEstoque;
@@ -53,13 +73,11 @@ public class DashboardController {
         model.addAttribute("custoEstoqueHoje", custoEstoque);
         model.addAttribute("vendaLiquidaHoje", vendaLiquida);
 
-        // 3. FINANCEIRO: SERVIÇOS (ORDENS DE SERVIÇO)
-        // Valor total das OS entregues hoje (Bruto)
-        Double totalOsBruto = ordemServicoRepository.somarValorBrutoOsEntregues("Entregue", inicioHoje, fimHoje);
+        // 4. FINANCEIRO: SERVIÇOS (ORDENS DE SERVIÇO)
+        Double totalOsBruto = ordemServicoRepository.somarValorBrutoOsEntregues(empresaId, "Entregue", inicioHoje, fimHoje);
         totalOsBruto = (totalOsBruto != null) ? totalOsBruto : 0.0;
 
-        // Total gasto com peças nas OS entregues hoje
-        Double totalGastoPecas = ordemServicoRepository.somarCustoPecasOsEntregues("Entregue", inicioHoje, fimHoje);
+        Double totalGastoPecas = ordemServicoRepository.somarCustoPecasOsEntregues(empresaId, "Entregue", inicioHoje, fimHoje);
         totalGastoPecas = (totalGastoPecas != null) ? totalGastoPecas : 0.0;
 
         Double servicoLiquido = totalOsBruto - totalGastoPecas;
@@ -68,9 +86,16 @@ public class DashboardController {
         model.addAttribute("totalGastoPecasHoje", totalGastoPecas);
         model.addAttribute("servicoLiquidoHoje", servicoLiquido);
 
-        // 4. RESULTADO CONSOLIDADO (LUCRO TOTAL)
+        // 5. RESULTADO CONSOLIDADO (LUCRO TOTAL)
         model.addAttribute("lucroTotalHoje", vendaLiquida + servicoLiquido);
 
         return "dashboard";
+    }
+
+    // Método auxiliar para pegar o usuário logado
+    private Usuario getUsuarioLogado() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
+        return usuarioRepository.findByUsername(login).orElse(null);
     }
 }

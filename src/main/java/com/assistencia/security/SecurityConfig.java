@@ -16,18 +16,23 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // Liberando login, registro e recursos estáticos
-                        .requestMatchers("/login", "/registro", "/css/**", "/js/**", "/images/**").permitAll()
+                        // LIBERADO: Rotas que não exigem login ou que precisam estar acessíveis para pagamento
+                        .requestMatchers(
+                                "/login",
+                                "/registro",
+                                "/registro-empresa",
+                                "/api/webhook/**",
+                                "/pagamento/**", // Libera a página e o envio do formulário de PIX
+                                "/css/**",
+                                "/js/**",
+                                "/images/**"
+                        ).permitAll()
 
-                        // Restringindo a nova área de gestão apenas para ADMIN
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-
-                        // Qualquer outra rota exige estar logado
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        // O sucessHandler agora pode ser simplificado ou mantido para o dashboard
                         .defaultSuccessUrl("/dashboard", true)
                         .permitAll()
                 )
@@ -35,7 +40,7 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                // Reativar CSRF é recomendado para produção, mas mantendo conforme seu código anterior
+                // Desabilitado para permitir os POSTs do Webhook e facilitar o desenvolvimento
                 .csrf(csrf -> csrf.disable());
 
         return http.build();
@@ -45,9 +50,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-    /* NOTA: O 'InMemoryUserDetailsManager' foi removido.
-       Para o sistema funcionar com o seu banco de dados, você deve criar uma classe
-       'UserDetailsService' que busque o 'Usuario' no banco e verifique o campo 'aprovado'.
-    */
 }

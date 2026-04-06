@@ -2,6 +2,7 @@ package com.assistencia.controller;
 
 import com.assistencia.model.PagamentoComissao;
 import com.assistencia.model.Usuario;
+import com.assistencia.model.Empresa;
 import com.assistencia.repository.PagamentoComissaoRepository;
 import com.assistencia.repository.UsuarioRepository;
 import org.springframework.security.core.Authentication;
@@ -26,7 +27,6 @@ public class PagamentoController {
         this.usuarioRepository = usuarioRepository;
         this.pagamentoComissaoRepository = pagamentoComissaoRepository;
     }
-
     @PostMapping("/registrar")
     @Transactional // Garante que a operação seja atômica
     public String registrarPagamento(@RequestParam("funcionarioId") Long id,

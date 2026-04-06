@@ -1,7 +1,7 @@
 package com.assistencia.controller;
 
-// 🚀 IMPORT ESSENCIAL PARA RESOLVER O SEU ERRO:
 import com.assistencia.model.Usuario;
+import com.assistencia.model.Empresa;
 import com.assistencia.model.Cliente;
 import com.assistencia.model.OrdemServico;
 import com.assistencia.repository.ClienteRepository;
@@ -40,24 +40,28 @@ public class OrdemServicoController {
         this.usuarioRepo = usuarioRepo;
     }
 
-    // Método privado para capturar o técnico/vendedor que está operando o sistema
     private Usuario getUsuarioLogado() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String login;
-        if (principal instanceof UserDetails) {
-            login = ((UserDetails) principal).getUsername();
-        } else {
-            login = principal.toString();
-        }
-        // Retorna o objeto Usuario completo para vincular à O.S.
+        String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
         return usuarioRepo.findByUsername(login).orElse(null);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','FUNCIONARIO')")
     @GetMapping
     public String listar(@RequestParam(required = false) String busca, Model model) {
-        List<OrdemServico> ordens = ordemRepo.findAll();
-        model.addAttribute("todosClientes", clienteRepo.findAll());
+        Usuario logado = getUsuarioLogado();
+        if (logado == null) return "redirect:/login";
+        Long empresaId = logado.getEmpresa().getId();
+
+        // 🔐 ISOLAMENTO SaaS: Busca apenas OS e Clientes da empresa logada
+        List<OrdemServico> ordens;
+        if (busca != null && !busca.isEmpty()) {
+            ordens = ordemRepo.buscarSugestoesSugestivas(busca, empresaId);
+        } else {
+            ordens = ordemRepo.findByEmpresaIdOrderByIdDesc(empresaId);
+        }
+
+        model.addAttribute("todosClientes", clienteRepo.findByEmpresaId(empresaId));
         model.addAttribute("ordens", ordens);
         model.addAttribute("busca", busca);
         return "ordens";
@@ -72,37 +76,32 @@ public class OrdemServicoController {
                          @RequestParam Double valor,
                          RedirectAttributes ra) {
         try {
-            if (valor < 0) {
-                ra.addFlashAttribute("erro", "O valor da O.S. não pode ser negativo!");
-                return "redirect:/ordens";
-            }
-
-            Cliente c = clienteRepo.findById(clienteId).orElseThrow(() -> new RuntimeException("Cliente não encontrado"));
             Usuario logado = getUsuarioLogado();
+            if (logado == null) throw new RuntimeException("Sessão expirada");
+
+            Cliente c = clienteRepo.findById(clienteId)
+                    .filter(cli -> cli.getEmpresa().getId().equals(logado.getEmpresa().getId()))
+                    .orElseThrow(() -> new RuntimeException("Cliente não pertence a esta unidade!"));
 
             OrdemServico os = new OrdemServico();
+            os.setEmpresa(logado.getEmpresa()); // 🔐 CARIMBO SaaS
             os.setClienteNome(c.getNome());
             os.setClienteCpf(c.getCpf());
             os.setClienteWhatsapp(c.getWhatsapp());
             os.setProduto(produto);
             os.setDefeito(defeito);
             os.setStatus(status);
-            os.setValorTotal(valor);
+            os.setValorTotal(valor != null ? valor : 0.0);
             os.setData(LocalDateTime.now());
+            os.setTecnico(logado);
+            os.setFuncionarioAbertura(logado.getNome());
             os.setCustoPeca(0.0);
 
-            // Vincula o usuário logado como responsável pela abertura
-            os.setTecnico(logado);
-            os.setFuncionarioAbertura(logado != null ? logado.getNome() : "Sistema");
-
             if ("Entregue".equalsIgnoreCase(status)) {
-                os.setDataEntrega(LocalDateTime.now()); // DATA DE CORTE FINANCEIRO
-                os.setFuncionarioEntrega(logado != null ? logado.getNome() : "Sistema");
-
-                // Gravação fixa da comissão no ato para evitar bugs de recálculo
-                if (logado != null && logado.getComissaoOs() != null) {
-                    double valorComissao = valor * (logado.getComissaoOs() / 100.0);
-                    os.setComissaoTecnicoValor(valorComissao);
+                os.setDataEntrega(LocalDateTime.now());
+                os.setFuncionarioEntrega(logado.getNome());
+                if (logado.getComissaoOs() != null) {
+                    os.setComissaoTecnicoValor(os.getValorTotal() * (logado.getComissaoOs() / 100.0));
                 }
             }
 
@@ -121,42 +120,39 @@ public class OrdemServicoController {
                                               @RequestParam String status,
                                               @RequestParam(defaultValue = "0") Double custoPeca) {
         try {
-            OrdemServico os = ordemRepo.findById(id).orElseThrow();
             Usuario logado = getUsuarioLogado();
-            String nomeLogado = (logado != null) ? logado.getNome() : "Sistema";
+            OrdemServico os = ordemRepo.findById(id).orElseThrow();
+
+            // 🔐 SEGURANÇA: Impede editar OS de outra empresa
+            if (!os.getEmpresa().getId().equals(logado.getEmpresa().getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Acesso negado.");
+            }
 
             if ("Entregue".equalsIgnoreCase(os.getStatus())) {
                 return ResponseEntity.badRequest().body(Map.of("success", false, "message", "O.S. já finalizada!"));
             }
 
             os.setStatus(status);
-
-            // Auditoria de quem mexeu na peça
             if ("Em andamento".equalsIgnoreCase(status)) {
-                os.setFuncionarioAndamento(nomeLogado);
+                os.setFuncionarioAndamento(logado.getNome());
+                os.setDataAndamento(LocalDateTime.now());
             }
 
             if ("Entregue".equalsIgnoreCase(status)) {
-                os.setDataEntrega(LocalDateTime.now()); // MARCO PARA DATA DE CORTE
+                os.setDataEntrega(LocalDateTime.now());
                 os.setCustoPeca(custoPeca);
-                os.setFuncionarioEntrega(nomeLogado);
+                os.setFuncionarioEntrega(logado.getNome());
                 os.setTecnico(logado);
 
-                // Gravação FIXA da comissão no momento da entrega (Proteção contra mudança de taxa)
-                if (logado != null && logado.getComissaoOs() != null) {
-                    double liquido = os.getValorTotal() - custoPeca;
-                    double valorComissao = liquido * (logado.getComissaoOs() / 100.0);
-                    os.setComissaoTecnicoValor(valorComissao);
+                double total = os.getValorTotal() != null ? os.getValorTotal() : 0.0;
+                double liquido = total - custoPeca;
+                if (logado.getComissaoOs() != null) {
+                    os.setComissaoTecnicoValor(liquido * (logado.getComissaoOs() / 100.0));
                 }
             }
 
             ordemRepo.save(os);
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "novoStatus", status,
-                    "funcionario", nomeLogado
-            ));
+            return ResponseEntity.ok(Map.of("success", true, "novoStatus", status, "funcionario", logado.getNome()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
@@ -167,7 +163,15 @@ public class OrdemServicoController {
     @ResponseBody
     public ResponseEntity<?> deletar(@PathVariable Long id) {
         try {
-            ordemRepo.deleteById(id);
+            Usuario logado = getUsuarioLogado();
+            OrdemServico os = ordemRepo.findById(id).orElseThrow();
+
+            // 🔐 SEGURANÇA: Impede deletar OS de outra empresa
+            if (!os.getEmpresa().getId().equals(logado.getEmpresa().getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            ordemRepo.delete(os);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao deletar.");
@@ -178,43 +182,42 @@ public class OrdemServicoController {
     @GetMapping("/pdf/{id}")
     public ResponseEntity<byte[]> gerarPdf(@PathVariable Long id) {
         try {
+            Usuario logado = getUsuarioLogado();
             OrdemServico os = ordemRepo.findById(id).orElseThrow();
+
+            // 🔐 SEGURANÇA: Impede ver PDF de outra empresa
+            if (!os.getEmpresa().getId().equals(logado.getEmpresa().getId())) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             PdfWriter writer = new PdfWriter(out);
             PdfDocument pdf = new PdfDocument(writer);
-
-            com.itextpdf.kernel.geom.PageSize pageSize = new com.itextpdf.kernel.geom.PageSize(226, 842);
-            Document document = new Document(pdf, pageSize);
+            Document document = new Document(pdf, new com.itextpdf.kernel.geom.PageSize(226, 842));
             document.setMargins(10, 10, 10, 10);
 
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yy HH:mm");
+            String nomeEmpresa = os.getEmpresa().getNome().toUpperCase();
 
-            document.add(new Paragraph("SHARK ELETRÔNICOS").setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("Brasília - DF").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph(nomeEmpresa).setBold().setFontSize(14).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("Assistência Técnica").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("ORDEM DE SERVIÇO #" + os.getId()).setBold().setFontSize(12).setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("Vendedor: " + os.getFuncionarioAbertura()).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("ORDEM DE SERVIÇO #" + os.getId()).setBold().setFontSize(11).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("Abertura: " + os.getData().format(fmt)).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-
-            if(os.getFuncionarioEntrega() != null) {
-                document.add(new Paragraph("Entregue por: " + os.getFuncionarioEntrega()).setFontSize(7).setTextAlignment(TextAlignment.CENTER));
-            }
-
+            document.add(new Paragraph("Vendedor: " + os.getFuncionarioAbertura()).setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
             document.add(new Paragraph("CLIENTE: " + os.getClienteNome()).setFontSize(9));
             document.add(new Paragraph("EQUIPAMENTO: " + os.getProduto()).setFontSize(9));
             document.add(new Paragraph("DEFEITO: " + os.getDefeito()).setFontSize(8).setItalic());
             document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("VALOR TOTAL: R$ " + String.format("%.2f", os.getValorTotal())).setBold().setFontSize(12).setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("----------------------------------------").setFontSize(8).setTextAlignment(TextAlignment.CENTER));
-            document.add(new Paragraph("GARANTIA DE 90 DIAS").setFontSize(7).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("TOTAL: R$ " + String.format("%.2f", os.getValorTotal())).setBold().setFontSize(12).setTextAlignment(TextAlignment.CENTER));
+            document.add(new Paragraph("\nGarantia de 90 dias nas peças trocadas.").setFontSize(7).setTextAlignment(TextAlignment.CENTER));
 
             document.close();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(ContentDisposition.inline().filename("OS_SHARK_" + os.getId() + ".pdf").build());
-
+            headers.setContentDisposition(ContentDisposition.inline().filename("OS_" + os.getId() + ".pdf").build());
             return new ResponseEntity<>(out.toByteArray(), headers, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);

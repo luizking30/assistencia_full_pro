@@ -19,29 +19,35 @@ public class Usuario {
     @Column(nullable = false)
     private String password;
 
-    private String role; // Ex: ROLE_ADMIN, ROLE_FUNCIONARIO
+    @Column(nullable = false)
+    private String email;
+
+    @Column(length = 14) // Novo campo para o Pix do Mercado Pago
+    private String cpf;
+
+    private String role;
 
     @Column(nullable = false)
     private boolean aprovado = false;
 
-    // Define a função na Shark: "VENDEDOR", "TECNICO" ou "HIBRIDO"
     @Column(length = 20)
     private String tipoFuncionario;
 
-    // --- TAXAS DE PERCENTUAL ---
     @Column(nullable = false)
     private Double comissaoOs = 0.0;
 
     @Column(nullable = false)
     private Double comissaoVenda = 0.0;
 
-    // --- CAMPOS DE CÁLCULO (TRANSIENTES: Não salvam no banco, servem para o HTML) ---
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "empresa_id", nullable = false)
+    private Empresa empresa;
 
     @Transient
-    private Double totalComissaoOsAcumulada = 0.0; // Agora representa o Líquido total a pagar
+    private Double totalComissaoOsAcumulada = 0.0;
 
     @Transient
-    private Double saldoVendaCalculado = 0.0;    // Agora representa o Líquido total a pagar
+    private Double saldoVendaCalculado = 0.0;
 
     @Transient
     private Double brutoVendaCalculado = 0.0;
@@ -55,33 +61,32 @@ public class Usuario {
     @Transient
     private Double totalPagoVenda = 0.0;
 
-    // Novos campos para a lógica de "Zerar o Ciclo" e histórico
     @Transient
     private LocalDateTime dataUltimoPagamento;
 
     @Transient
     private Long diasSemPagamento;
 
-    // --- MÉTODOS DE APOIO ---
     public Double getSaldoTotalReceber() {
         double os = (totalComissaoOsAcumulada != null) ? totalComissaoOsAcumulada : 0.0;
         double vendas = (saldoVendaCalculado != null) ? saldoVendaCalculado : 0.0;
         return os + vendas;
     }
 
-    // --- CONSTRUTORES ---
     public Usuario() {}
 
-    public Usuario(String nome, String username, String password, String role, boolean aprovado, String tipoFuncionario) {
+    public Usuario(String nome, String username, String email, String cpf, String password, String role, boolean aprovado, String tipoFuncionario, Empresa empresa) {
         this.nome = nome;
         this.username = username;
+        this.email = email;
+        this.cpf = cpf;
         this.password = password;
         this.role = role;
         this.aprovado = aprovado;
         this.tipoFuncionario = tipoFuncionario;
+        this.empresa = empresa;
     }
 
-    // --- GETTERS E SETTERS ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -90,6 +95,12 @@ public class Usuario {
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getCpf() { return cpf; }
+    public void setCpf(String cpf) { this.cpf = cpf; }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
@@ -108,6 +119,9 @@ public class Usuario {
 
     public Double getComissaoVenda() { return comissaoVenda; }
     public void setComissaoVenda(Double comissaoVenda) { this.comissaoVenda = comissaoVenda; }
+
+    public Empresa getEmpresa() { return empresa; }
+    public void setEmpresa(Empresa empresa) { this.empresa = empresa; }
 
     public Double getTotalComissaoOsAcumulada() { return totalComissaoOsAcumulada; }
     public void setTotalComissaoOsAcumulada(Double totalComissaoOsAcumulada) { this.totalComissaoOsAcumulada = totalComissaoOsAcumulada; }
@@ -132,4 +146,6 @@ public class Usuario {
 
     public Long getDiasSemPagamento() { return diasSemPagamento; }
     public void setDiasSemPagamento(Long diasSemPagamento) { this.diasSemPagamento = diasSemPagamento; }
+
+    public Double getValor() { return totalComissaoOsAcumulada; }
 }

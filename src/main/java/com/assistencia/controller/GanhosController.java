@@ -3,6 +3,7 @@ package com.assistencia.controller;
 import com.assistencia.model.OrdemServico;
 import com.assistencia.model.PagamentoComissao;
 import com.assistencia.model.Usuario;
+import com.assistencia.model.Empresa;
 import com.assistencia.model.Venda;
 import com.assistencia.repository.OrdemServicoRepository;
 import com.assistencia.repository.PagamentoComissaoRepository;
@@ -36,7 +37,6 @@ public class GanhosController {
         this.usuarioRepo = usuarioRepo;
         this.pagamentoRepo = pagamentoRepo;
     }
-
     @GetMapping("/meus-ganhos")
     public String meusGanhos(Model model, Authentication auth) {
         Usuario usuarioLogado = usuarioRepo.findByUsername(auth.getName()).orElse(null);

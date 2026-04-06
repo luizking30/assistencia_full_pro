@@ -10,6 +10,8 @@ import com.assistencia.repository.PagamentoComissaoRepository;
 import com.assistencia.repository.UsuarioRepository;
 import com.assistencia.repository.VendaRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -43,18 +45,28 @@ public class AdminController {
         this.pagamentoRepo = pagamentoRepo;
     }
 
+    private Usuario getUsuarioLogado() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
+        return usuarioRepo.findByUsername(login).orElse(null);
+    }
+
     @GetMapping("/funcionarios")
     public String listarEquipe(Model model) {
-        List<Usuario> usuarios = usuarioRepo.findAll();
-        List<OrdemServico> todasOrdens = ordemRepo.findAll();
-        List<Venda> todasVendas = vendaRepo.findAll();
-        List<PagamentoComissao> todosPagamentos = pagamentoRepo.findAll();
+        Usuario adminLogado = getUsuarioLogado();
+        if (adminLogado == null) return "redirect:/login";
+        Long empresaId = adminLogado.getEmpresa().getId();
+
+        // 🔐 ISOLAMENTO SaaS: Filtra tudo pela empresa do administrador logado
+        List<Usuario> usuarios = usuarioRepo.findByEmpresaId(empresaId);
+        List<OrdemServico> todasOrdens = ordemRepo.findByEmpresaIdOrderByIdDesc(empresaId);
+        List<Venda> todasVendas = vendaRepo.findByEmpresaIdOrderByDataHoraDesc(empresaId);
+        List<PagamentoComissao> todosPagamentos = pagamentoRepo.findByEmpresaIdOrderByDataHoraDesc(empresaId);
 
         for (Usuario u : usuarios) {
             final Long idU = u.getId();
             final String nomeU = (u.getNome() != null) ? u.getNome().trim() : "";
 
-            // 1. DETERMINAR DATAS DE CORTE (ÚLTIMOS PAGAMENTOS POR TIPO)
             LocalDateTime corteOs = todosPagamentos.stream()
                     .filter(p -> Objects.equals(p.getFuncionarioId(), idU) && "OS".equals(p.getTipoComissao()))
                     .map(PagamentoComissao::getDataHora)
@@ -67,7 +79,6 @@ public class AdminController {
                     .max(LocalDateTime::compareTo)
                     .orElse(LocalDateTime.of(2000, 1, 1, 0, 0));
 
-            // 2. CÁLCULO VENDAS (SÓ O QUE FOI FEITO APÓS O CORTE)
             List<Venda> vendasPendentes = todasVendas.stream()
                     .filter(v -> v.getVendedor() != null && Objects.equals(v.getVendedor().getId(), idU))
                     .filter(v -> v.getDataHora() != null && v.getDataHora().isAfter(corteVenda))
@@ -81,7 +92,6 @@ public class AdminController {
                     .map(v -> BigDecimal.valueOf(v.getComissaoVendedorValor() != null ? v.getComissaoVendedorValor() : 0.0))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // 3. CÁLCULO O.S. (SÓ O QUE FOI FEITO APÓS O CORTE)
             List<OrdemServico> ordensPendentes = todasOrdens.stream()
                     .filter(os -> {
                         String status = os.getStatus() != null ? os.getStatus() : "";
@@ -101,19 +111,17 @@ public class AdminController {
                         if (os.getComissaoTecnicoValor() != null && os.getComissaoTecnicoValor() > 0) {
                             return BigDecimal.valueOf(os.getComissaoTecnicoValor());
                         }
-                        BigDecimal liq = BigDecimal.valueOf(os.getValorTotal() - (os.getCustoPeca() != null ? os.getCustoPeca() : 0.0));
+                        BigDecimal liq = BigDecimal.valueOf((os.getValorTotal() != null ? os.getValorTotal() : 0.0) - (os.getCustoPeca() != null ? os.getCustoPeca() : 0.0));
                         BigDecimal taxa = BigDecimal.valueOf(u.getComissaoOs() != null ? u.getComissaoOs() : 0.0);
                         return liq.multiply(taxa).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
                     })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            // 4. SETANDO VALORES PARA O HTML
             u.setBrutoOsCalculado(brutoOs.doubleValue());
             u.setBrutoVendaCalculado(brutoVenda.doubleValue());
             u.setTotalComissaoOsAcumulada(comissaoOs.doubleValue());
             u.setSaldoVendaCalculado(comissaoVenda.doubleValue());
 
-            // 5. ÚLTIMO PAGAMENTO GERAL (AUDITORIA)
             var ultimoPgtoGeral = todosPagamentos.stream()
                     .filter(p -> Objects.equals(p.getFuncionarioId(), idU))
                     .map(PagamentoComissao::getDataHora)
@@ -126,8 +134,7 @@ public class AdminController {
         }
 
         model.addAttribute("usuarios", usuarios);
-        // Envia os pagamentos para o HTML poder "pescar" as datas individuais
-        model.addAttribute("pagamentos", pagamentoRepo.findTop50ByOrderByDataHoraDesc());
+        model.addAttribute("pagamentos", todosPagamentos);
 
         return "funcionarios";
     }
@@ -138,44 +145,64 @@ public class AdminController {
                                         @RequestParam("comissaoOs") Double comissaoOs,
                                         @RequestParam("comissaoVenda") Double comissaoVenda,
                                         RedirectAttributes ra) {
+        Usuario admin = getUsuarioLogado();
         usuarioRepo.findById(id).ifPresent(u -> {
-            u.setTipoFuncionario(tipoFuncionario);
-            u.setComissaoOs(comissaoOs);
-            u.setComissaoVenda(comissaoVenda);
-            usuarioRepo.save(u);
-            ra.addFlashAttribute("mensagem", "Configurações atualizadas!");
+            // SEGURANÇA: Verifica se o funcionário pertence à empresa do admin
+            if (u.getEmpresa().getId().equals(admin.getEmpresa().getId())) {
+                u.setTipoFuncionario(tipoFuncionario);
+                u.setComissaoOs(comissaoOs);
+                u.setComissaoVenda(comissaoVenda);
+                usuarioRepo.save(u);
+                ra.addFlashAttribute("mensagem", "Configurações atualizadas!");
+            }
         });
         return "redirect:/admin/funcionarios";
     }
 
     @PostMapping("/funcionarios/aprovar/{id}")
     public String aprovarFuncionario(@PathVariable Long id, RedirectAttributes ra) {
+        Usuario admin = getUsuarioLogado();
         usuarioRepo.findById(id).ifPresent(u -> {
-            u.setAprovado(true);
-            usuarioRepo.save(u);
-            ra.addFlashAttribute("mensagem", "Funcionário aprovado!");
+            if (u.getEmpresa().getId().equals(admin.getEmpresa().getId())) {
+                u.setAprovado(true);
+                usuarioRepo.save(u);
+                ra.addFlashAttribute("mensagem", "Funcionário aprovado!");
+            }
         });
         return "redirect:/admin/funcionarios";
     }
 
     @PostMapping("/funcionarios/deletar/{id}")
     public String deletarFuncionario(@PathVariable Long id, RedirectAttributes ra) {
-        if (usuarioRepo.existsById(id)) {
-            usuarioRepo.deleteById(id);
-            ra.addFlashAttribute("mensagem", "Funcionário removido.");
-        }
+        Usuario admin = getUsuarioLogado();
+        usuarioRepo.findById(id).ifPresent(u -> {
+            if (u.getEmpresa().getId().equals(admin.getEmpresa().getId())) {
+                usuarioRepo.delete(u);
+                ra.addFlashAttribute("mensagem", "Funcionário removido.");
+            }
+        });
         return "redirect:/admin/funcionarios";
     }
 
     @PostMapping("/cliente/deletar/{id}")
     public String deletarCliente(@PathVariable Long id, RedirectAttributes ra) {
-        clienteRepo.deleteById(id);
+        Usuario admin = getUsuarioLogado();
+        clienteRepo.findById(id).ifPresent(c -> {
+            if (c.getEmpresa().getId().equals(admin.getEmpresa().getId())) {
+                clienteRepo.delete(c);
+            }
+        });
         return "redirect:/clientes";
     }
 
     @PostMapping("/ordem/deletar/{id}")
     public String deletarOrdem(@PathVariable Long id, RedirectAttributes ra) {
-        ordemRepo.deleteById(id);
+        Usuario admin = getUsuarioLogado();
+        ordemRepo.findById(id).ifPresent(os -> {
+            if (os.getEmpresa().getId().equals(admin.getEmpresa().getId())) {
+                ordemRepo.delete(os);
+            }
+        });
         return "redirect:/ordens";
     }
 }

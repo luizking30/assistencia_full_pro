@@ -11,6 +11,9 @@ import java.util.Optional;
 @Repository
 public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComissao, Long> {
 
+    // 🔐 SEGURANÇA SaaS: Busca pagamentos de uma empresa específica com ordenação
+    List<PagamentoComissao> findByEmpresaIdOrderByDataHoraDesc(Long empresaId);
+
     /**
      * Busca todos os pagamentos de um funcionário ordenados pelo mais recente.
      */
@@ -22,10 +25,9 @@ public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComi
     Optional<PagamentoComissao> findTopByFuncionarioIdOrderByDataHoraDesc(Long funcionarioId);
 
     /**
-     * 🚀 SOLUÇÃO DO ERRO: Busca os últimos 50 pagamentos globais da loja.
-     * Necessário para o AdminController listar o histórico recente.
+     * 🚀 SOLUÇÃO SaaS: Busca os últimos 50 pagamentos APENAS da empresa logada.
      */
-    List<PagamentoComissao> findTop50ByOrderByDataHoraDesc();
+    List<PagamentoComissao> findTop50ByEmpresaIdOrderByDataHoraDesc(Long empresaId);
 
     /**
      * 🎯 ESSENCIAL PARA DATA DE CORTE:
@@ -52,7 +54,10 @@ public interface PagamentoComissaoRepository extends JpaRepository<PagamentoComi
     Double somarPorFuncionarioETipo(@Param("id") Long id, @Param("tipo") String tipo);
 
     /**
-     * Busca os últimos 10 pagamentos globais da loja.
+     * Busca os últimos 10 pagamentos de uma empresa específica.
      */
-    List<PagamentoComissao> findTop10ByOrderByDataHoraDesc();
+    List<PagamentoComissao> findTop10ByEmpresaIdOrderByDataHoraDesc(Long empresaId);
+
+    // MÉTODOS GLOBAIS (CUIDADO: Use apenas se for SuperAdmin ou se o filtro Hibernate estiver ativo)
+    List<PagamentoComissao> findTop50ByOrderByDataHoraDesc();
 }

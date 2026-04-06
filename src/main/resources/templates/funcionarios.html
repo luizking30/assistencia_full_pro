@@ -3,7 +3,7 @@
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout}">
 <head>
-  <title>Gestão de Comissões - Shark Eletrônicos</title>
+  <title>Gestão de Equipe - Shark Eletrônicos</title>
   <th:block layout:fragment="estilos">
     <style>
       /* DESIGN SYSTEM SHARK UNIFICADO */
@@ -104,6 +104,17 @@
       .modal { background: rgba(0, 0, 0, 0.8); }
       .header-info-mini { font-size: 0.65rem; color: #0dcaf0; text-transform: uppercase; font-weight: 800; }
       .aviso-trava { font-size: 0.65rem; color: #ffc107; background: rgba(255, 193, 7, 0.1); padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 193, 7, 0.2); display: none; }
+
+      /* Badge Proprietário */
+      .badge-proprietario {
+        background: linear-gradient(45deg, #0047ab, #00d4ff);
+        color: white;
+        font-size: 0.6rem;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-weight: 800;
+        box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+      }
     </style>
   </th:block>
 </head>
@@ -166,7 +177,10 @@
 
           <td class="ps-4 text-start">
             <div class="fw-bold text-white fs-6"><i class="bi bi-person-circle me-2 text-white-50"></i><span th:text="${u.nome}">Shark</span></div>
-            <span th:if="${u.aprovado}" class="text-info-50 val-mono" style="font-size: 0.65rem;" th:text="${u.tipoFuncionario}">Cargo</span>
+            <div th:if="${u.aprovado}">
+              <span th:if="${u.tipoFuncionario == 'PROPRIETARIO'}" class="badge-proprietario"><i class="bi bi-star-fill me-1"></i>PROPRIETÁRIO</span>
+              <span th:unless="${u.tipoFuncionario == 'PROPRIETARIO'}" class="text-info-50 val-mono" style="font-size: 0.65rem;" th:text="${u.tipoFuncionario}">Cargo</span>
+            </div>
             <span th:if="${!u.aprovado}" class="badge bg-warning text-dark fw-bold" style="font-size: 0.6rem;">AGUARDANDO APROVAÇÃO</span>
           </td>
 
@@ -315,7 +329,7 @@
             <select id="tipoFuncModal" class="form-select bg-black text-white border-secondary shadow-none">
               <option value="VENDEDOR">VENDEDOR</option>
               <option value="TECNICO">TÉCNICO</option>
-              <option value="HIBRIDO">HÍBRIDO</option>
+              <option value="PROPRIETARIO">PROPRIETÁRIO</option>
             </select>
           </div>
           <div class="row g-2 mb-4">

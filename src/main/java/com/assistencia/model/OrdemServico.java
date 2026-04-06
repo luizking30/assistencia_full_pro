@@ -22,8 +22,9 @@ public class OrdemServico {
     @Column(length = 50)
     private String status;
 
-    private LocalDateTime data;
-    private LocalDateTime dataEntrega;
+    private LocalDateTime data;           // Data de Abertura
+    private LocalDateTime dataAndamento;  // Data de Início do Serviço
+    private LocalDateTime dataEntrega;    // Data de Finalização/Entrega
 
     private Double valorTotal = 0.0;
     private Double custoPeca = 0.0;
@@ -32,15 +33,20 @@ public class OrdemServico {
     private boolean pago = false;
     private Double comissaoTecnicoValor = 0.0; // VALOR FIXADO NO ATO DA ENTREGA
 
-    // --- NOVOS CAMPOS DE AUDITORIA ---
+    // --- CAMPOS DE AUDITORIA (NOMES DOS FUNCIONÁRIOS) ---
     private String funcionarioAbertura;
     private String funcionarioAndamento;
     private String funcionarioEntrega;
 
     // Relacionamento com a classe Usuario (O técnico responsável)
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tecnico_id")
     private Usuario tecnico;
+
+    // --- RELACIONAMENTO SaaS (MULTITENANT) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id", nullable = false)
+    private Empresa empresa;
 
     public OrdemServico() {
         this.data = LocalDateTime.now();
@@ -75,6 +81,9 @@ public class OrdemServico {
     public LocalDateTime getData() { return data; }
     public void setData(LocalDateTime data) { this.data = data; }
 
+    public LocalDateTime getDataAndamento() { return dataAndamento; }
+    public void setDataAndamento(LocalDateTime dataAndamento) { this.dataAndamento = dataAndamento; }
+
     public LocalDateTime getDataEntrega() { return dataEntrega; }
     public void setDataEntrega(LocalDateTime dataEntrega) { this.dataEntrega = dataEntrega; }
 
@@ -102,7 +111,10 @@ public class OrdemServico {
     public String getFuncionarioEntrega() { return funcionarioEntrega; }
     public void setFuncionarioEntrega(String funcionarioEntrega) { this.funcionarioEntrega = funcionarioEntrega; }
 
-    // Mantendo métodos de compatibilidade se necessário
+    public Empresa getEmpresa() { return empresa; }
+    public void setEmpresa(Empresa empresa) { this.empresa = empresa; }
+
+    // Métodos de compatibilidade (Aliasing)
     public Double getValor() { return valorTotal; }
     public void setValor(Double valor) { this.valorTotal = valor; }
 }

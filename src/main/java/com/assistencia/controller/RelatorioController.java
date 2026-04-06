@@ -3,11 +3,15 @@ package com.assistencia.controller;
 import com.assistencia.model.Venda;
 import com.assistencia.model.OrdemServico;
 import com.assistencia.model.Conta;
+import com.assistencia.model.Usuario;
 import com.assistencia.repository.VendaRepository;
 import com.assistencia.repository.OrdemServicoRepository;
 import com.assistencia.repository.ContaRepository;
+import com.assistencia.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,12 +37,22 @@ public class RelatorioController {
     @Autowired
     private ContaRepository contaRepository;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
     @GetMapping("/relatorios")
     public String gerarRelatorioCompleto(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
             @RequestParam(required = false) String mesFiltro,
             Model model) {
+
+        // 1. Identificar o usuário logado e a empresa (Segurança SaaS)
+        Usuario logado = getUsuarioLogado();
+        if (logado == null || logado.getEmpresa() == null) {
+            return "redirect:/login";
+        }
+        Long empresaId = logado.getEmpresa().getId();
 
         List<Venda> vendas = new ArrayList<>();
         List<OrdemServico> servicos = new ArrayList<>();
@@ -62,9 +76,13 @@ public class RelatorioController {
             LocalDateTime dataInicial = inicio.atStartOfDay();
             LocalDateTime dataFinal = fim.atTime(LocalTime.MAX);
 
-            // 1. Busca no Banco
-            vendas = vendaRepository.findByDataHoraBetween(dataInicial, dataFinal);
-            servicos = osRepository.findByStatusAndDataEntregaBetween("Entregue", dataInicial, dataFinal);
+            // --- 🔐 BUSCA NO BANCO FILTRADA POR EMPRESA (SaaS) ---
+
+            // RESOLVE O ERRO: Agora usa findByEmpresaIdAndDataHoraBetween
+            vendas = vendaRepository.findByEmpresaIdAndDataHoraBetween(empresaId, dataInicial, dataFinal);
+
+            // Filtra também as OS da empresa
+            servicos = osRepository.findByEmpresaIdAndStatusAndDataEntregaBetween(empresaId, "Entregue", dataInicial, dataFinal);
 
             // 2. Cálculos de Vendas (Produtos)
             totalVendasBruto = vendas.stream()
@@ -80,10 +98,14 @@ public class RelatorioController {
             custoPecasOS = servicos.stream()
                     .mapToDouble(s -> s.getCustoPeca() != null ? s.getCustoPeca() : 0.0).sum();
 
-            // 4. Busca e Cálculo de Despesas (Contas Pagas no período)
+            // 4. Busca e Cálculo de Despesas (Contas da Empresa Pagas no período)
             LocalDate dataIniContas = inicio;
             LocalDate dataFimContas = fim;
+
+            // Filtramos no Stream pela empresa para garantir isolamento total
+            // Agora o método getEmpresa() funcionará pois foi adicionado na Model Conta
             contasPagas = contaRepository.findAll().stream()
+                    .filter(c -> c.getEmpresa() != null && c.getEmpresa().getId().equals(empresaId))
                     .filter(c -> c.isPaga() && c.getDataPagamento() != null &&
                             !c.getDataPagamento().toLocalDate().isBefore(dataIniContas) &&
                             !c.getDataPagamento().toLocalDate().isAfter(dataFimContas))
@@ -96,20 +118,18 @@ public class RelatorioController {
         double lucroVendas = totalVendasBruto - custoEstoqueVendido;
         double lucroServicos = totalServicosBruto - custoPecasOS;
         double lucroTotalPeriodo = lucroVendas + lucroServicos;
-        double lucroTotalFinal = lucroTotalPeriodo - totalDespesas; // Lucro Real (Vendas + OS - Contas)
+        double lucroTotalFinal = lucroTotalPeriodo - totalDespesas;
 
         // Atributos para o Thymeleaf
         model.addAttribute("totalVendasBruto", totalVendasBruto);
         model.addAttribute("custoEstoqueVendido", custoEstoqueVendido);
         model.addAttribute("lucroVendas", lucroVendas);
-
         model.addAttribute("totalServicosBruto", totalServicosBruto);
         model.addAttribute("custoPecasOS", custoPecasOS);
         model.addAttribute("lucroServicos", lucroServicos);
-
         model.addAttribute("totalDespesas", totalDespesas);
-        model.addAttribute("lucroTotalPeriodo", lucroTotalPeriodo); // Vendas + Serviços
-        model.addAttribute("lucroTotalFinal", lucroTotalFinal);     // Vendas + Serviços - Contas
+        model.addAttribute("lucroTotalPeriodo", lucroTotalPeriodo);
+        model.addAttribute("lucroTotalFinal", lucroTotalFinal);
 
         model.addAttribute("vendas", vendas);
         model.addAttribute("servicos", servicos);
@@ -117,5 +137,12 @@ public class RelatorioController {
         model.addAttribute("fim", fim);
 
         return "relatorios";
+    }
+
+    // Método auxiliar para pegar o usuário logado
+    private Usuario getUsuarioLogado() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
+        return usuarioRepository.findByUsername(login).orElse(null);
     }
 }

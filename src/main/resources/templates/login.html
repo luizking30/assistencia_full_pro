@@ -54,14 +54,14 @@
             margin-bottom: 30px;
         }
 
-        .form-floating > .form-control {
-            background-color: rgba(2, 6, 23, 0.8);
-            border: 1px solid #1e293b;
-            color: white;
+        .form-floating > .form-control, .form-select {
+            background-color: rgba(2, 6, 23, 0.8) !important;
+            border: 1px solid #1e293b !important;
+            color: white !important;
             border-radius: 12px;
         }
 
-        .form-floating > .form-control:focus {
+        .form-floating > .form-control:focus, .form-select:focus {
             border-color: var(--shark-light-blue);
             box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.2);
             background-color: var(--shark-black);
@@ -80,7 +80,16 @@
             transition: all 0.3s ease;
         }
 
-        .btn-login:hover {
+        .btn-login:disabled {
+            background: #1e293b;
+            border-color: #334155;
+            color: #64748b;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-login:hover:not(:disabled) {
             background: var(--shark-white);
             color: var(--shark-blue);
             transform: translateY(-3px);
@@ -95,9 +104,10 @@
             border-radius: 12px;
             padding: 12px;
             width: 100%;
-            margin-top: 20px;
+            margin-top: 10px;
             cursor: pointer;
             transition: 0.3s;
+            font-size: 0.85rem;
         }
 
         .btn-toggle-reg:hover {
@@ -118,7 +128,8 @@
             border: 1px solid var(--shark-blue);
         }
 
-        #nomeContainer { display: none; }
+        /* Classes de Controle de Exibição */
+        #nomeContainer, #cpfContainer, #emailContainer, #nomeEmpresaContainer, #cnpjContainer, #selecaoEmpresaContainer, #btnVoltar { display: none; }
     </style>
 </head>
 <body>
@@ -133,6 +144,10 @@
         <i class="bi bi-check-circle"></i> Solicitação enviada! Aguarde aprovação.
     </div>
 
+    <div th:if="${param.invalidCpf}" class="alert-custom" style="color: #ffcc00; border-color: #ffcc00;">
+        <i class="bi bi-exclamation-circle"></i> CPF inválido! Verifique os números.
+    </div>
+
     <div th:if="${param.error}" class="alert-custom" style="color: #ff4d4d; border-color: #ff4d4d;">
         <i class="bi bi-exclamation-triangle"></i>
         <span th:if="${session.SPRING_SECURITY_LAST_EXCEPTION != null}"
@@ -144,25 +159,50 @@
         </span>
     </div>
 
-    <div th:if="${param.logout}" class="alert-custom" style="color: var(--shark-light-blue); border-color: var(--shark-light-blue);">
-        <i class="bi bi-info-circle"></i> Você saiu do sistema.
-    </div>
-
     <form id="authForm" th:action="@{/login}" method="post">
+
+        <div class="form-floating mb-3" id="nomeEmpresaContainer">
+            <input type="text" name="nomeEmpresa" class="form-control" id="nomeEmpresaInput" placeholder="Nome da Empresa">
+            <label for="nomeEmpresaInput"><i class="bi bi-building me-2"></i>Nome da Empresa</label>
+        </div>
+
+        <div class="form-floating mb-3" id="cnpjContainer">
+            <input type="text" name="cnpj" class="form-control" id="cnpjInput" placeholder="CNPJ (Opcional)">
+            <label for="cnpjInput"><i class="bi bi-patch-check me-2"></i>CNPJ da Loja (Opcional)</label>
+        </div>
+
+        <div class="mb-3 text-start" id="selecaoEmpresaContainer">
+            <label class="small text-info ms-2 mb-1 fw-bold">ESCOLHA A LOJA</label>
+            <select name="empresaId" class="form-select p-3" id="empresaSelect">
+                <option value="">Selecione uma empresa...</option>
+                <option th:each="emp : ${empresas}" th:value="${emp.id}" th:text="${emp.nome}"></option>
+            </select>
+        </div>
 
         <div class="form-floating mb-3" id="nomeContainer">
             <input type="text" name="nome" class="form-control" id="nomeInput" placeholder="Nome Completo">
-            <label for="nomeInput"><i class="bi bi-person-vcard me-2"></i>Nome Completo</label>
+            <label for="nomeInput"><i class="bi bi-person-vcard me-2"></i>Nome do Usuario</label>
+        </div>
+
+        <div class="form-floating mb-3" id="cpfContainer">
+            <input type="text" name="cpf" class="form-control" id="cpfInput" placeholder="CPF" maxlength="14">
+            <label for="cpfInput"><i class="bi bi-fingerprint me-2"></i>CPF do Usuario</label>
+            <div id="cpfFeedback" style="font-size: 0.75rem; margin-top: 5px; text-align: left; display: none;"></div>
+        </div>
+
+        <div class="form-floating mb-3" id="emailContainer">
+            <input type="email" name="email" class="form-control" id="emailInput" placeholder="E-mail Real">
+            <label for="emailInput"><i class="bi bi-envelope-at me-2"></i>E-mail do Usuario</label>
         </div>
 
         <div class="form-floating mb-3">
             <input type="text" name="username" class="form-control" id="userInput" placeholder="Usuário" required>
-            <label for="userInput"><i class="bi bi-person me-2"></i>Usuário</label>
+            <label for="userInput"><i class="bi bi-person me-2"></i>Login do Usuario</label>
         </div>
 
         <div class="form-floating mb-4">
             <input type="password" name="password" class="form-control" id="passInput" placeholder="Senha" required>
-            <label for="passInput"><i class="bi bi-key me-2"></i>Senha</label>
+            <label for="passInput"><i class="bi bi-key me-2"></i>Senha do Usuario</label>
         </div>
 
         <button type="submit" class="btn-login" id="mainBtn">
@@ -170,9 +210,17 @@
         </button>
     </form>
 
-    <button type="button" class="btn-toggle-reg" id="toggleBtn" onclick="toggleAuth()">
-        <i class="bi bi-person-plus-fill me-2"></i>Solicitar acesso (Novo Funcionário)
-    </button>
+    <div id="actionButtons">
+        <button type="button" class="btn-toggle-reg" id="toggleFuncBtn" onclick="toggleMode('funcionario')">
+            <i class="bi bi-person-plus-fill me-2"></i>Solicitar acesso (Novo Funcionário)
+        </button>
+        <button type="button" class="btn-toggle-reg" id="toggleEmpresaBtn" onclick="toggleMode('empresa')">
+            <i class="bi bi-building-add me-2"></i>Solicitar acesso (Nova Empresa)
+        </button>
+        <button type="button" class="btn-toggle-reg" id="btnVoltar" onclick="toggleMode('login')">
+            <i class="bi bi-arrow-left me-2"></i>Voltar para Login
+        </button>
+    </div>
 
     <div class="footer-text" style="margin-top: 25px; font-size: 0.7rem; color: var(--text-muted);">
         &copy; 2026 Shark Eletrônicos | Brasília-DF
@@ -180,40 +228,107 @@
 </div>
 
 <script>
-    let isRegister = false;
+    // ALGORITMO MÓDULO 11 (O que você explicou!)
+    function isCpfValid(cpf) {
+        cpf = cpf.replace(/\D/g, '');
+        if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+        let soma = 0, resto;
+        for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i-1, i)) * (11 - i);
+        resto = (soma * 10) % 11;
+        if ((resto === 10) || (resto === 11)) resto = 0;
+        if (resto !== parseInt(cpf.substring(9, 10))) return false;
+        soma = 0;
+        for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i-1, i)) * (12 - i);
+        resto = (soma * 10) % 11;
+        if ((resto === 10) || (resto === 11)) resto = 0;
+        if (resto !== parseInt(cpf.substring(10, 11))) return false;
+        return true;
+    }
 
-    function toggleAuth() {
-        isRegister = !isRegister;
+    const cpfInput = document.getElementById('cpfInput');
+    const cpfFeedback = document.getElementById('cpfFeedback');
+    const mainBtn = document.getElementById('mainBtn');
+
+    cpfInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+
+        // Máscara ao vivo
+        if (value.length > 3 && value.length <= 6) value = value.replace(/(\d{3})(\d)/, "$1.$2");
+        else if (value.length > 6 && value.length <= 9) value = value.replace(/(\d{3})(\d{3})(\d)/, "$1.$2.$3");
+        else if (value.length > 9) value = value.replace(/(\d{3})(\d{3})(\d{3})(\d)/, "$1.$2.$3-$4");
+        e.target.value = value;
+
+        const cleanCpf = value.replace(/\D/g, '');
+        const mode = document.getElementById('headerSubtitle').innerText;
+
+        if (cleanCpf.length === 11) {
+            if (isCpfValid(cleanCpf)) {
+                this.style.borderColor = "#00ff88";
+                cpfFeedback.style.display = "none";
+                mainBtn.disabled = false;
+            } else {
+                this.style.borderColor = "#ff4d4d";
+                cpfFeedback.innerText = "❌ CPF inválido";
+                cpfFeedback.style.color = "#ff4d4d";
+                cpfFeedback.style.display = "block";
+                mainBtn.disabled = (mode !== "GESTÃO DE LOJA");
+            }
+        } else {
+            this.style.borderColor = "";
+            cpfFeedback.style.display = "none";
+            if (mode !== "GESTÃO DE LOJA") mainBtn.disabled = true;
+        }
+    });
+
+    function toggleMode(mode) {
         const form = document.getElementById('authForm');
         const nomeContainer = document.getElementById('nomeContainer');
-        const nomeInput = document.getElementById('nomeInput');
-        const mainBtn = document.getElementById('mainBtn');
-        const toggleBtn = document.getElementById('toggleBtn');
+        const cpfContainer = document.getElementById('cpfContainer');
+        const emailContainer = document.getElementById('emailContainer');
+        const nomeEmpresaContainer = document.getElementById('nomeEmpresaContainer');
+        const cnpjContainer = document.getElementById('cnpjContainer');
+        const selecaoEmpresaContainer = document.getElementById('selecaoEmpresaContainer');
         const subtitle = document.getElementById('headerSubtitle');
+        const btnFunc = document.getElementById('toggleFuncBtn');
+        const btnEmp = document.getElementById('toggleEmpresaBtn');
+        const btnVoltar = document.getElementById('btnVoltar');
 
-        // Limpa mensagens de erro ao trocar de tela
-        const alerts = document.querySelectorAll('.alert-custom');
-        alerts.forEach(a => a.style.display = 'none');
+        // Reset geral
+        [nomeContainer, cpfContainer, emailContainer, nomeEmpresaContainer, cnpjContainer, selecaoEmpresaContainer, btnFunc, btnEmp, btnVoltar].forEach(c => c.style.display = "none");
+        [document.getElementById('nomeInput'), document.getElementById('cpfInput'), document.getElementById('emailInput'), document.getElementById('nomeEmpresaInput'), document.getElementById('empresaSelect')].forEach(i => i.required = false);
 
-        if (isRegister) {
+        cpfInput.style.borderColor = "";
+        cpfFeedback.style.display = "none";
+        mainBtn.disabled = false;
+
+        if (mode === 'funcionario') {
             form.action = "/registro";
-            nomeContainer.style.display = "block";
-            nomeInput.required = true;
+            [nomeContainer, cpfContainer, emailContainer, selecaoEmpresaContainer, btnVoltar].forEach(c => c.style.display = "block");
+            [document.getElementById('nomeInput'), cpfInput, document.getElementById('emailInput'), document.getElementById('empresaSelect')].forEach(i => i.required = true);
             mainBtn.innerText = "Enviar Solicitação";
-            subtitle.innerText = "NOVO CADASTRO";
+            subtitle.innerText = "CADASTRO FUNCIONÁRIO";
             subtitle.style.color = "#ffcc00";
-            toggleBtn.innerHTML = '<i class="bi bi-arrow-left me-2"></i>Voltar para Login';
-        } else {
+            mainBtn.disabled = true;
+        }
+        else if (mode === 'empresa') {
+            form.action = "/registro-empresa";
+            [nomeContainer, cpfContainer, emailContainer, nomeEmpresaContainer, cnpjContainer, btnVoltar].forEach(c => c.style.display = "block");
+            [document.getElementById('nomeInput'), cpfInput, document.getElementById('emailInput'), document.getElementById('nomeEmpresaInput')].forEach(i => i.required = true);
+            mainBtn.innerText = "Criar Empresa e Admin";
+            subtitle.innerText = "NOVA EMPRESA";
+            subtitle.style.color = "var(--shark-light-blue)";
+            mainBtn.disabled = true;
+        }
+        else {
             form.action = "/login";
-            nomeContainer.style.display = "none";
-            nomeInput.required = false;
             mainBtn.innerText = "Acessar Painel";
             subtitle.innerText = "GESTÃO DE LOJA";
             subtitle.style.color = "var(--shark-light-blue)";
-            toggleBtn.innerHTML = '<i class="bi bi-person-plus-fill me-2"></i>Solicitar acesso (Novo Funcionário)';
+            btnFunc.style.display = "block";
+            btnEmp.style.display = "block";
         }
+        document.querySelectorAll('.alert-custom').forEach(a => a.style.display = 'none');
     }
 </script>
-
 </body>
 </html>

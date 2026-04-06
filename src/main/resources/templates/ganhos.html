@@ -230,8 +230,8 @@
                         <td th:text="${'#' + os.id}" class="text-success fw-bold"></td>
                         <td th:text="${os.produto}"></td>
                         <td class="pe-4 text-end fw-bold text-success val-mono">
-                            <span th:with="liq=${(os.valorTotal ?: 0) - (os.custoPeca ?: 0)}"
-                                  th:text="${#numbers.formatCurrency(liq * (usuario.comissaoOs / 100))}"></span>
+                            <span th:with="liq=${(os.valorTotal ?: 0) - (os.custoPeca ?: 0)}, taxa=${usuario.comissaoOs ?: 0}"
+                                  th:text="${#numbers.formatCurrency(liq * (taxa / 100.0))}"></span>
                         </td>
                     </tr>
                     </tbody>

@@ -12,32 +12,40 @@ import java.util.List;
 @Repository
 public interface VendaRepository extends JpaRepository<Venda, Long> {
 
-    // --- RELATÓRIOS E DASHBOARD ---
-    List<Venda> findByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
-    long countByDataHoraBetween(LocalDateTime inicio, LocalDateTime fim);
+    // --- 🔐 SEGURANÇA SAAS: LISTAGEM POR LOJA ---
+    List<Venda> findByEmpresaIdOrderByDataHoraDesc(Long empresaId);
 
-    @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
-    Double somarVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+    // --- 🚀 MÉTODOS PARA O DASHBOARD (RESOLVE O ERRO DE COMPILAÇÃO) ---
 
-    @Query("SELECT COALESCE(SUM(v.custoTotalEstoque), 0.0) FROM Venda v WHERE v.dataHora BETWEEN :inicio AND :fim")
-    Double somarCustoEstoqueDasVendasDoDia(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+    // O Dashboard agora pede este método com EmpresaId:
+    long countByEmpresaIdAndDataHoraBetween(Long empresaId, LocalDateTime inicio, LocalDateTime fim);
 
-    // --- SISTEMA DE COMISSÃO ---
-    List<Venda> findByVendedorIdAndPagoFalse(Long vendedorId);
+    @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v " +
+            "WHERE v.empresa.id = :empresaId AND v.dataHora BETWEEN :inicio AND :fim")
+    Double somarVendasDoDia(@Param("empresaId") Long empresaId,
+                            @Param("inicio") LocalDateTime inicio,
+                            @Param("fim") LocalDateTime fim);
 
-    @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v WHERE v.vendedor.id = :vendedorId AND v.pago = false")
-    Double somarTotalVendasPendentesPorVendedor(@Param("vendedorId") Long vendedorId);
+    @Query("SELECT COALESCE(SUM(v.custoTotalEstoque), 0.0) FROM Venda v " +
+            "WHERE v.empresa.id = :empresaId AND v.dataHora BETWEEN :inicio AND :fim")
+    Double somarCustoEstoqueDasVendasDoDia(@Param("empresaId") Long empresaId,
+                                           @Param("inicio") LocalDateTime inicio,
+                                           @Param("fim") LocalDateTime fim);
 
-    // --- NOVOS MÉTODOS PARA A BUSCA DINÂMICA (AJAX) ---
+    // --- SISTEMA DE COMISSÃO (FILTRADO POR EMPRESA) ---
+    List<Venda> findByEmpresaIdAndVendedorIdAndPagoFalse(Long empresaId, Long vendedorId);
 
-    /**
-     * Busca por nome do vendedor (ignora maiúsculas/minúsculas) e período de tempo.
-     */
-    List<Venda> findByVendedorNomeContainingIgnoreCaseAndDataHoraBetween(String nome, LocalDateTime inicio, LocalDateTime fim);
+    @Query("SELECT COALESCE(SUM(v.valorTotal), 0.0) FROM Venda v " +
+            "WHERE v.empresa.id = :empresaId AND v.vendedor.id = :vendedorId AND v.pago = false")
+    Double somarTotalVendasPendentesPorVendedor(@Param("empresaId") Long empresaId, @Param("vendedorId") Long vendedorId);
 
-    /**
-     * Busca por produtos (Já existente no seu código)
-     */
-    @Query("SELECT DISTINCT v FROM Venda v JOIN v.itens i WHERE i.produto.nome LIKE %:nome%")
-    List<Venda> findByNomeProduto(@Param("nome") String nome);
+    // --- BUSCAS DINÂMICAS E AJAX (FILTRADO POR EMPRESA) ---
+
+    List<Venda> findByEmpresaIdAndVendedorNomeContainingIgnoreCaseAndDataHoraBetween(Long empresaId, String nome, LocalDateTime inicio, LocalDateTime fim);
+
+    @Query("SELECT DISTINCT v FROM Venda v JOIN v.itens i " +
+            "WHERE v.empresa.id = :empresaId AND i.produto.nome LIKE %:nome%")
+    List<Venda> findByNomeProduto(@Param("empresaId") Long empresaId, @Param("nome") String nome);
+
+    List<Venda> findByEmpresaIdAndDataHoraBetween(Long empresaId, LocalDateTime inicio, LocalDateTime fim);
 }

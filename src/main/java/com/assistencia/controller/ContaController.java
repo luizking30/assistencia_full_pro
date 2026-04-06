@@ -1,10 +1,14 @@
 package com.assistencia.controller;
 
 import com.assistencia.model.Conta;
+import com.assistencia.model.Usuario;
 import com.assistencia.repository.ContaRepository;
+import com.assistencia.repository.UsuarioRepository;
 import com.assistencia.service.ContaTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -24,19 +28,26 @@ public class ContaController {
     private ContaRepository contaRepository;
 
     @Autowired
+    private UsuarioRepository usuarioRepo;
+
+    @Autowired
     private ContaTaskService contaTaskService;
 
     @GetMapping
     public String listarContas(Model model) {
-        // 🚀 VERIFICAÇÃO AUTOMÁTICA:
-        // Se o mês virou, o serviço cria as contas recorrentes no banco antes de listar.
+        Usuario logado = getUsuarioLogado();
+        if (logado == null) return "redirect:/login";
+        Long empresaId = logado.getEmpresa().getId();
+
+        // 🚀 VERIFICAÇÃO AUTOMÁTICA: Recorrentes por empresa
         contaTaskService.processarContasRecorrentes();
 
         LocalDate hoje = LocalDate.now();
         LocalDate inicioMes = hoje.with(TemporalAdjusters.firstDayOfMonth());
         LocalDate fimMes = hoje.with(TemporalAdjusters.lastDayOfMonth());
 
-        List<Conta> todasAsContas = contaRepository.findAllByOrderByDataVencimentoAsc();
+        // 🔐 FILTRO SaaS: Busca apenas as contas da empresa logada
+        List<Conta> todasAsContas = contaRepository.findByEmpresaIdOrderByDataVencimentoAsc(empresaId);
 
         // 1. FILTRO MENSAL (Tabela superior)
         List<Conta> contasDoMes = todasAsContas.stream()
@@ -48,25 +59,23 @@ public class ContaController {
         Double totalContas = contasDoMes.stream().mapToDouble(Conta::getValor).sum();
         Double totalPago = contasDoMes.stream().filter(Conta::isPaga).mapToDouble(Conta::getValor).sum();
 
-        // 🚀 NOVO CÁLCULO: Soma apenas o que NÃO está pago e já passou da data de hoje
         Double totalVencido = contasDoMes.stream()
                 .filter(c -> !c.isPaga() && c.getDataVencimento().isBefore(hoje))
                 .mapToDouble(Conta::getValor).sum();
 
         Double totalPendente = totalContas - totalPago;
 
-        // 3. HISTÓRICO GERAL (Tabela inferior - Todo o período)
+        // 3. HISTÓRICO GERAL (Apenas pagas da empresa)
         List<Conta> historicoGeral = todasAsContas.stream()
                 .filter(Conta::isPaga)
                 .collect(Collectors.toList());
 
-        // Atributos para o Thymeleaf
         model.addAttribute("dataInicio", inicioMes);
         model.addAttribute("dataFim", fimMes);
         model.addAttribute("totalContas", totalContas);
         model.addAttribute("totalPago", totalPago);
         model.addAttribute("totalPendente", totalPendente);
-        model.addAttribute("totalVencido", totalVencido); // 🦈 Novo Atributo
+        model.addAttribute("totalVencido", totalVencido);
         model.addAttribute("contas", contasDoMes);
         model.addAttribute("historico", historicoGeral);
         model.addAttribute("novaConta", new Conta());
@@ -76,8 +85,11 @@ public class ContaController {
 
     @PostMapping("/pagar/{id}")
     public String marcarComoPago(@PathVariable Long id, Authentication auth, RedirectAttributes attributes) {
+        Usuario logado = getUsuarioLogado();
         Conta conta = contaRepository.findById(id).orElse(null);
-        if (conta != null) {
+
+        // 🔐 SEGURANÇA SaaS: Verifica se a conta pertence à empresa do usuário
+        if (conta != null && conta.getEmpresa().getId().equals(logado.getEmpresa().getId())) {
             conta.setPaga(true);
             conta.setUsuarioPagador(auth.getName());
             conta.setDataPagamento(LocalDateTime.now());
@@ -92,6 +104,12 @@ public class ContaController {
                               @RequestParam("diaVencimento") int dia,
                               RedirectAttributes attributes) {
         try {
+            Usuario logado = getUsuarioLogado();
+            if (logado == null || logado.getEmpresa() == null) {
+                attributes.addFlashAttribute("erro", "Sessão inválida ou empresa não identificada.");
+                return "redirect:/login";
+            }
+
             LocalDate hoje = LocalDate.now();
             int ultimoDiaDoMes = hoje.lengthOfMonth();
 
@@ -100,13 +118,17 @@ public class ContaController {
                 return "redirect:/contas";
             }
 
-            // Sistema monta a data: Dia escolhido + Mês e Ano atuais
             conta.setDataVencimento(hoje.withDayOfMonth(dia));
             conta.setPaga(false);
+
+            // 🔥 VINCULO SaaS: Carimba a conta com a empresa logada
+            conta.setEmpresa(logado.getEmpresa());
+
             contaRepository.save(conta);
             attributes.addFlashAttribute("mensagem", "Conta lançada para o dia " + dia + " com sucesso! 🦈🚀");
 
         } catch (Exception e) {
+            e.printStackTrace();
             attributes.addFlashAttribute("erro", "Erro ao salvar: " + e.getMessage());
         }
         return "redirect:/contas";
@@ -115,11 +137,23 @@ public class ContaController {
     @PostMapping("/deletar/{id}")
     public String deletarConta(@PathVariable Long id, RedirectAttributes attributes) {
         try {
-            contaRepository.deleteById(id);
-            attributes.addFlashAttribute("mensagem", "Registro removido!");
+            Usuario logado = getUsuarioLogado();
+            Conta conta = contaRepository.findById(id).orElse(null);
+
+            // 🔐 SEGURANÇA SaaS: Verifica posse antes de deletar
+            if (conta != null && conta.getEmpresa().getId().equals(logado.getEmpresa().getId())) {
+                contaRepository.delete(conta);
+                attributes.addFlashAttribute("mensagem", "Registro removido!");
+            }
         } catch (Exception e) {
             attributes.addFlashAttribute("erro", "Erro ao remover registro.");
         }
         return "redirect:/contas";
+    }
+
+    private Usuario getUsuarioLogado() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String login = (principal instanceof UserDetails) ? ((UserDetails) principal).getUsername() : principal.toString();
+        return usuarioRepo.findByUsername(login).orElse(null);
     }
 }

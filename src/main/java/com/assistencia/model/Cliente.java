@@ -5,7 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "clientes")
+@Table(name = "clientes", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"cpf", "empresa_id"})
+})
 public class Cliente {
 
     @Id
@@ -15,7 +17,8 @@ public class Cliente {
     @NotBlank(message = "O nome é obrigatório")
     private String nome;
 
-    @Column(unique = true, nullable = false, length = 20)
+    // REMOVIDO: unique = true daqui, pois agora a regra é (CPF + Empresa)
+    @Column(nullable = false, length = 20)
     @NotBlank(message = "O CPF é obrigatório")
     private String cpf;
 
@@ -25,6 +28,14 @@ public class Cliente {
     // NOVO: Campo necessário para o Dashboard (Filtro por data)
     @Column(name = "data_cadastro", updatable = false)
     private LocalDateTime dataCadastro;
+
+    // --- RELACIONAMENTO SaaS (MULTITENANT) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id", nullable = false)
+    private Empresa empresa;
+
+    public Empresa getEmpresa() { return empresa; }
+    public void setEmpresa(Empresa empresa) { this.empresa = empresa; }
 
     // --- Gatilho Automático ---
     @PrePersist

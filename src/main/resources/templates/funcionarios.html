@@ -115,6 +115,10 @@
         font-weight: 800;
         box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
       }
+      .info-aviso-card { font-size: 0.55rem; color: #ffc107; font-weight: 600; text-transform: uppercase; margin-top: 4px; }
+
+      .spin { animation: spin 1s linear infinite; }
+      @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
   </th:block>
 </head>
@@ -132,6 +136,48 @@
           <i class="bi bi-calendar3 me-2 text-info"></i>
           <span th:text="${#dates.format(#dates.createNow(), 'dd/MM/yyyy')}"></span>
         </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card-ganhos-stats border-left-info" style="background: linear-gradient(90deg, rgba(30, 41, 59, 0.9) 0%, rgba(2, 6, 23, 0.8) 100%); padding: 1.5rem;">
+        <div class="row align-items-center">
+          <div class="col-md-1 text-center d-none d-md-block">
+            <i class="bi bi-building-fill-check text-info" style="font-size: 2.5rem;"></i>
+          </div>
+          <div class="col-md-11">
+            <div class="row g-3 align-items-center">
+              <div class="col-md-4 border-end border-secondary border-opacity-25">
+                <span class="label-stats text-info">Unidade / Razão Social</span>
+                <div class="text-white fw-bold fs-5" th:text="${usuario.empresa.nome}">Nome da Empresa</div>
+                <span class="badge bg-dark border border-info text-info mt-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">
+                  <i class="bi bi-shield-check me-1"></i> CONTA ATIVA
+                </span>
+              </div>
+              <div class="col-md-2 border-end border-secondary border-opacity-25">
+                <span class="label-stats">Documento (CNPJ)</span>
+                <div class="text-white-50 val-mono" th:text="${usuario.empresa.cnpj ?: '---'}"></div>
+              </div>
+              <div class="col-md-3 border-end border-secondary border-opacity-25">
+                <span class="label-stats">Plano Shark</span>
+                <div class="text-white-50 small">Premium Corporate</div>
+                <div th:class="${usuario.empresa.diasRestantes <= 3 ? 'text-danger fw-bold val-mono' : 'text-warning fw-bold val-mono'}" style="font-size: 0.7rem;">
+                  [[${usuario.empresa.diasRestantes}]] DIAS RESTANTES
+                </div>
+              </div>
+              <div class="col-md-3 d-flex flex-column gap-2">
+                <button class="btn btn-sm btn-warning fw-bold text-dark w-100" data-bs-toggle="modal" data-bs-target="#modalRenovar">
+                  <i class="bi bi-lightning-charge-fill me-1"></i> RENOVAR AGORA
+                </button>
+                <button class="btn btn-sm btn-outline-info fw-bold w-100" style="font-size: 0.7rem;" data-bs-toggle="modal" data-bs-target="#modalCnpj">
+                  <i class="bi bi-pencil-square me-1"></i> EDITAR CNPJ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -306,6 +352,74 @@
     </div>
   </div>
 
+  <div class="modal fade" id="modalRenovar" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-shark-content" style="border-left: 5px solid #009ee3 !important;">
+        <div class="modal-header border-secondary">
+          <h5 class="text-white fw-bold modal-title">
+            <img src="https://http2.mlstatic.com/frontend-assets/ml-extras/mp-logo.venezuela.svg" width="30" class="me-2">
+            Renovação Mercado Pago
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 text-center">
+          <div id="mp-selection-area">
+            <p class="text-white-50 small mb-4">Escolha o período de renovação:</p>
+            <div class="d-grid gap-2 mb-4">
+              <button class="btn btn-lg btn-primary fw-bold mb-2" onclick="gerarPagamentoMP(30)">
+                RENOVAR 30 DIAS - R$ 60,00
+              </button>
+              <button class="btn btn-sm btn-outline-info" onclick="gerarPagamentoMP(365)">
+                PLANO ANUAL (DESCONTO)
+              </button>
+            </div>
+          </div>
+
+          <div id="mp-qr-container" style="display: none;">
+            <div class="bg-white p-3 d-inline-block rounded mb-3 shadow-lg">
+              <img id="qrCodeImage" src="" alt="QR Code PIX" style="width: 200px;">
+            </div>
+            <div class="alert bg-black border-secondary text-start">
+              <small class="header-info-mini d-block mb-1 text-info">Código PIX Copia e Cola</small>
+              <input type="text" id="pixCopiaCola" class="form-control form-control-sm bg-transparent text-white-50 border-0 p-0 val-mono" readonly onclick="this.select();">
+            </div>
+            <div class="info-aviso-card mt-2">
+              <i class="bi bi-arrow-repeat spin me-1"></i> Aguardando confirmação do pagamento...
+            </div>
+          </div>
+
+          <div class="info-aviso-card mt-3">
+            <i class="bi bi-shield-lock-fill me-1"></i> Processado com segurança pelo Mercado Pago.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalCnpj" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-shark-content">
+        <form th:action="@{/admin/empresa/atualizar-cnpj}" method="post">
+          <div class="modal-header border-secondary">
+            <h5 class="text-white fw-bold modal-title"><i class="bi bi-card-checklist me-2 text-info"></i>Atualizar CNPJ</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4 text-start">
+            <div class="mb-3">
+              <label class="header-info-mini mb-2">Novo CNPJ da Empresa</label>
+              <input type="text" name="cnpj" id="cnpjInputEmp" class="form-control bg-black text-white border-secondary shadow-none val-mono"
+                     th:value="${usuario.empresa.cnpj}" placeholder="00.000.000/0000-00">
+            </div>
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-info fw-bold py-2 text-dark">SALVAR DOCUMENTO</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">CANCELAR</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <form id="formPagamentoDireto" th:action="@{/pagamentos/registrar}" method="post" style="display: none;">
     <input type="hidden" name="funcionarioId" id="inputFuncId">
     <input type="hidden" name="valorPago" id="inputValor">
@@ -354,6 +468,64 @@
 
 <th:block layout:fragment="scripts">
   <script th:inline="javascript">
+    let intervaloCheck;
+
+    function gerarPagamentoMP(dias) {
+      const selectionArea = document.getElementById('mp-selection-area');
+      const container = document.getElementById('mp-qr-container');
+      const header = document.querySelector('meta[name="_csrf_header"]').content;
+      const token = document.querySelector('meta[name="_csrf"]').content;
+
+      fetch(`/admin/empresa/gerar-renovacao?dias=${dias}`, {
+        method: 'POST',
+        headers: { [header]: token }
+      })
+              .then(res => res.json())
+              .then(data => {
+                const diasAntigos = (data.dias_anteriores !== undefined && data.dias_anteriores !== null)
+                        ? data.dias_anteriores
+                        : 0;
+
+                document.getElementById('qrCodeImage').src = `data:image/jpeg;base64,${data.qr_code_base64}`;
+                document.getElementById('pixCopiaCola').value = data.qr_code;
+                selectionArea.style.display = 'none';
+                container.style.display = 'block';
+                iniciarVerificacao(diasAntigos);
+              })
+              .catch(err => {
+                console.error("Erro ao gerar PIX:", err);
+                alert("Erro ao conectar com Mercado Pago.");
+              });
+    }
+
+    function iniciarVerificacao(diasAntigos) {
+      if (intervaloCheck) clearInterval(intervaloCheck);
+      intervaloCheck = setInterval(() => {
+        fetch(`/pagamentos/assinatura/status-check?diasAnteriores=${diasAntigos}`)
+                .then(res => res.json())
+                .then(pago => {
+                  if (pago) {
+                    clearInterval(intervaloCheck);
+                    alert("🦈 SHARK ATUALIZADA! Pagamento confirmado.");
+                    window.location.reload();
+                  }
+                });
+      }, 5000);
+    }
+
+    const cnpjInputEmp = document.getElementById('cnpjInputEmp');
+    if(cnpjInputEmp) {
+      cnpjInputEmp.addEventListener('input', e => {
+        let v = e.target.value.replace(/\D/g, '');
+        if (v.length > 2) v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+        if (v.length > 5) v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+        if (v.length > 8) v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+        if (v.length > 12) v = v.replace(/(\d{4})(\d)/, '$1-$2');
+        if (v.length > 18) v = v.substring(0, 18);
+        e.target.value = v;
+      });
+    }
+
     function popularDados(btn) {
       const liqOs = parseFloat(btn.getAttribute('data-liq-os') || 0);
       const liqVenda = parseFloat(btn.getAttribute('data-liq-venda') || 0);

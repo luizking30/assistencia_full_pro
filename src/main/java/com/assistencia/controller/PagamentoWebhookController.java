@@ -25,8 +25,7 @@ public class PagamentoWebhookController {
     private String mpAccessToken;
 
     /**
-     * Endpoint que o Mercado Pago chama automaticamente.
-     * URL para configurar no painel do Mercado Pago:
+     * URL configurada no painel do Mercado Pago:
      * https://gestaoshark.up.railway.app/api/webhook/pagamento
      */
     @PostMapping("/pagamento")
@@ -34,52 +33,57 @@ public class PagamentoWebhookController {
             @RequestParam(value = "data.id", required = false) Long dataId,
             @RequestParam(value = "type", required = false) String type) {
 
-        // O Mercado Pago envia notificações de vários tipos. Queremos apenas 'payment'.
+        // Filtramos apenas notificações de pagamentos
         if ("payment".equals(type) && dataId != null) {
 
-            MercadoPagoConfig.setAccessToken(mpAccessToken);
+            // Configuração do SDK com tratamento de espaço em branco
+            MercadoPagoConfig.setAccessToken(mpAccessToken.trim());
             PaymentClient client = new PaymentClient();
 
             try {
-                // 1. Buscamos o pagamento na API do Mercado Pago para confirmar se é real e seguro
+                // 1. Consulta obrigatória à API do MP para validar o pagamento
                 Payment payment = client.get(dataId);
 
-                // 2. Verificamos se o status retornado pela API oficial é 'approved'
+                // 2. Verificamos se o pagamento foi aprovado
                 if ("approved".equals(payment.getStatus())) {
 
-                    // 3. Pegamos a referência que enviamos na geração do Pix: "ID_EMPRESA:DIAS"
                     String reference = payment.getExternalReference();
 
+                    // Validação da referência Shark (ID:DIAS)
                     if (reference != null && reference.contains(":")) {
                         String[] partes = reference.split(":");
                         Long empresaId = Long.parseLong(partes[0]);
                         int diasComprados = Integer.parseInt(partes[1]);
 
-                        // 4. Localizamos a empresa no banco de dados da Shark
-                        Empresa empresa = empresaRepo.findById(empresaId).orElse(null);
-
-                        if (empresa != null) {
-                            // 5. Calculamos o novo saldo de dias e salvamos
+                        // 3. Atualização no Banco de Dados
+                        empresaRepo.findById(empresaId).ifPresentOrElse(empresa -> {
                             int saldoAtual = (empresa.getDiasRestantes() != null) ? empresa.getDiasRestantes() : 0;
                             empresa.setDiasRestantes(saldoAtual + diasComprados);
 
+                            // Caso a empresa estivesse inativa por falta de pagamento, reativamos aqui
+                            if (!empresa.isAtivo()) {
+                                empresa.setAtivo(true);
+                            }
+
                             empresaRepo.save(empresa);
 
-                            logger.info("✅ SUCESSO NO WEBHOOK: Empresa {} (ID: {}) recebeu +{} dias.",
-                                    empresa.getNome(), empresaId, diasComprados);
-                        } else {
-                            logger.warn("⚠️ WEBHOOK: Empresa com ID {} não encontrada no banco.", empresaId);
-                        }
+                            logger.info("✅ WEBHOOK SUCESSO: Empresa {} reativada com +{} dias. ID Pagamento: {}",
+                                    empresa.getNome(), diasComprados, dataId);
+                        }, () -> {
+                            logger.warn("⚠️ WEBHOOK ALERTA: Empresa ID {} não localizada no banco.", empresaId);
+                        });
                     }
+                } else {
+                    logger.info("ℹ️ WEBHOOK: Pagamento {} com status: {}", dataId, payment.getStatus());
                 }
             } catch (Exception e) {
-                logger.error("❌ ERRO GRAVE no Webhook do Mercado Pago: ", e);
-                // Retornamos 500 para o MP entender que deve tentar reenviar a notificação mais tarde
+                logger.error("❌ WEBHOOK ERRO CRÍTICO: Falha ao processar notificação {}", dataId, e);
+                // Retornar erro faz o MP tentar novamente depois
                 return ResponseEntity.internalServerError().build();
             }
         }
 
-        // Retornamos 200 OK para o Mercado Pago parar de enviar esta notificação específica
+        // Retorno 200 sinaliza ao MP que a notificação foi processada
         return ResponseEntity.ok().build();
     }
 }

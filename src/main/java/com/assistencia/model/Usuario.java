@@ -1,6 +1,8 @@
 package com.assistencia.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 
 @Entity
@@ -11,18 +13,28 @@ public class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Informação obrigatória")
     private String nome;
 
+    @NotBlank(message = "Informação obrigatória")
     @Column(unique = true, nullable = false)
     private String username;
 
+    @NotBlank(message = "Informação obrigatória")
     @Column(nullable = false)
     private String password;
 
+    @NotBlank(message = "Informação obrigatória")
+    @Email(message = "E-mail inválido")
     @Column(nullable = false)
     private String email;
 
-    @Column(length = 14) // Novo campo para o Pix do Mercado Pago ou CPF do funcionário
+    @NotBlank(message = "Informação obrigatória")
+    @Column(length = 20, unique = true) // Campo adicionado para busca de recuperação
+    private String whatsapp;
+
+    @NotBlank(message = "Informação obrigatória")
+    @Column(length = 14)
     private String cpf;
 
     private String role;
@@ -41,7 +53,14 @@ public class Usuario {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "empresa_id", nullable = false)
-    private Empresa empresa;
+    private Empresa empresa = new Empresa();
+
+    // --- CAMPOS PARA RECUPERAÇÃO DE SENHA ---
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+
+    @Column(name = "token_expiration")
+    private LocalDateTime tokenExpiration;
 
     // Campos @Transient: Existem apenas na memória do Java para cálculos, não vão para o Banco.
     @Transient
@@ -79,10 +98,11 @@ public class Usuario {
 
     public Usuario() {}
 
-    public Usuario(String nome, String username, String email, String cpf, String password, String role, boolean aprovado, String tipoFuncionario, Empresa empresa) {
+    public Usuario(String nome, String username, String email, String whatsapp, String cpf, String password, String role, boolean aprovado, String tipoFuncionario, Empresa empresa) {
         this.nome = nome;
         this.username = username;
         this.email = email;
+        this.whatsapp = whatsapp;
         this.cpf = cpf;
         this.password = password;
         this.role = role;
@@ -103,6 +123,9 @@ public class Usuario {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getWhatsapp() { return whatsapp; }
+    public void setWhatsapp(String whatsapp) { this.whatsapp = whatsapp; }
 
     public String getCpf() { return cpf; }
     public void setCpf(String cpf) { this.cpf = cpf; }
@@ -127,6 +150,12 @@ public class Usuario {
 
     public Empresa getEmpresa() { return empresa; }
     public void setEmpresa(Empresa empresa) { this.empresa = empresa; }
+
+    public String getResetPasswordToken() { return resetPasswordToken; }
+    public void setResetPasswordToken(String resetPasswordToken) { this.resetPasswordToken = resetPasswordToken; }
+
+    public LocalDateTime getTokenExpiration() { return tokenExpiration; }
+    public void setTokenExpiration(LocalDateTime tokenExpiration) { this.tokenExpiration = tokenExpiration; }
 
     public Double getTotalComissaoOsAcumulada() { return totalComissaoOsAcumulada; }
     public void setTotalComissaoOsAcumulada(Double totalComissaoOsAcumulada) { this.totalComissaoOsAcumulada = totalComissaoOsAcumulada; }

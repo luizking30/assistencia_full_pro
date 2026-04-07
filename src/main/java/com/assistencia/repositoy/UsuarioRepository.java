@@ -10,14 +10,41 @@ import java.util.List;
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     /**
+     * 🔑 RECUPERAÇÃO DE SENHA:
+     * Busca o usuário pelo token único gerado no e-mail.
+     */
+    Optional<Usuario> findByResetPasswordToken(String token);
+
+    /**
+     * 🔍 BUSCA TRIPLA SHARK (Username, E-mail ou WhatsApp):
+     * O Spring filtrará o banco por qualquer um desses 3 campos.
+     */
+    Optional<Usuario> findByUsernameOrEmailOrWhatsapp(String username, String email, String whatsapp);
+
+    /**
      * 1. ESSENCIAL: Busca pelo nome de usuário (Usado pelo Spring Security).
-     * Retorna Optional para tratar casos onde o login não existe.
      */
     Optional<Usuario> findByUsername(String username);
 
     /**
+     * 📧 VALIDAÇÃO: Busca por e-mail para verificar duplicidade no cadastro.
+     */
+    Optional<Usuario> findByEmail(String email);
+
+    /**
+     * 📱 VALIDAÇÃO WHATSAPP: Busca para verificar duplicidade de número.
+     */
+    Optional<Usuario> findByWhatsapp(String whatsapp);
+
+    /**
+     * ⚡ PERFORMANCE: Verifica se existe sem trazer o objeto inteiro do banco.
+     */
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+    boolean existsByWhatsapp(String whatsapp);
+
+    /**
      * 🔐 SEGURANÇA SaaS: Lista apenas os funcionários da loja logada.
-     * Garante que um dono de assistência não veja os técnicos de outro.
      */
     List<Usuario> findByEmpresaId(Long empresaId);
 
@@ -33,7 +60,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     /**
      * Busca global de usuários não aprovados.
-     * Cuidado: Use apenas em dashboards de SuperAdmin (Global).
      */
     List<Usuario> findByAprovadoFalse();
 }

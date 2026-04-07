@@ -4,11 +4,21 @@ import com.assistencia.model.OrdemServico;
 import com.assistencia.model.PagamentoComissao;
 import com.assistencia.model.Usuario;
 import com.assistencia.model.Venda;
+import com.assistencia.model.Empresa;
 import com.assistencia.repository.ClienteRepository;
 import com.assistencia.repository.OrdemServicoRepository;
 import com.assistencia.repository.PagamentoComissaoRepository;
 import com.assistencia.repository.UsuarioRepository;
 import com.assistencia.repository.VendaRepository;
+import com.assistencia.repository.EmpresaRepository;
+import com.mercadopago.MercadoPagoConfig;
+import com.mercadopago.client.common.IdentificationRequest;
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.client.payment.PaymentCreateRequest;
+import com.mercadopago.client.payment.PaymentPayerRequest;
+import com.mercadopago.resources.payment.Payment;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,6 +32,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Controller
@@ -34,15 +45,20 @@ public class AdminController {
     private final VendaRepository vendaRepo;
     private final UsuarioRepository usuarioRepo;
     private final PagamentoComissaoRepository pagamentoRepo;
+    private final EmpresaRepository empresaRepo;
+
+    @Value("${mercado_pago_sample_access_token}")
+    private String mpAccessToken;
 
     public AdminController(ClienteRepository clienteRepo, OrdemServicoRepository ordemRepo,
                            VendaRepository vendaRepo, UsuarioRepository usuarioRepo,
-                           PagamentoComissaoRepository pagamentoRepo) {
+                           PagamentoComissaoRepository pagamentoRepo, EmpresaRepository empresaRepo) {
         this.clienteRepo = clienteRepo;
         this.ordemRepo = ordemRepo;
         this.vendaRepo = vendaRepo;
         this.usuarioRepo = usuarioRepo;
         this.pagamentoRepo = pagamentoRepo;
+        this.empresaRepo = empresaRepo;
     }
 
     private Usuario getUsuarioLogado() {
@@ -55,9 +71,11 @@ public class AdminController {
     public String listarEquipe(Model model) {
         Usuario adminLogado = getUsuarioLogado();
         if (adminLogado == null) return "redirect:/login";
+
+        model.addAttribute("usuario", adminLogado);
+
         Long empresaId = adminLogado.getEmpresa().getId();
 
-        // 🔐 ISOLAMENTO SaaS: Filtra tudo pela empresa do administrador logado
         List<Usuario> usuarios = usuarioRepo.findByEmpresaId(empresaId);
         List<OrdemServico> todasOrdens = ordemRepo.findByEmpresaIdOrderByIdDesc(empresaId);
         List<Venda> todasVendas = vendaRepo.findByEmpresaIdOrderByDataHoraDesc(empresaId);
@@ -139,6 +157,59 @@ public class AdminController {
         return "funcionarios";
     }
 
+    @PostMapping("/empresa/gerar-renovacao")
+    @ResponseBody
+    public ResponseEntity<?> gerarPixRenovacao(@RequestParam("dias") int dias) {
+        try {
+            Usuario admin = getUsuarioLogado();
+            if (admin == null || admin.getEmpresa() == null) return ResponseEntity.status(403).build();
+
+            MercadoPagoConfig.setAccessToken(mpAccessToken.trim());
+            PaymentClient client = new PaymentClient();
+
+            BigDecimal valorTotal = BigDecimal.valueOf(dias).multiply(new BigDecimal("2.00"));
+
+            PaymentCreateRequest paymentRequest = PaymentCreateRequest.builder()
+                    .transactionAmount(valorTotal)
+                    .description("Renovação Shark: " + dias + " dias - " + admin.getEmpresa().getNome())
+                    .paymentMethodId("pix")
+                    .externalReference(admin.getEmpresa().getId() + ":" + dias)
+                    .payer(PaymentPayerRequest.builder()
+                            .email(admin.getEmail())
+                            .firstName(admin.getNome())
+                            .identification(IdentificationRequest.builder()
+                                    .type("CPF")
+                                    .number(admin.getCpf().replaceAll("\\D", ""))
+                                    .build())
+                            .build())
+                    .build();
+
+            Payment payment = client.create(paymentRequest);
+
+            return ResponseEntity.ok(Map.of(
+                    "qr_code", payment.getPointOfInteraction().getTransactionData().getQrCode(),
+                    "qr_code_base64", payment.getPointOfInteraction().getTransactionData().getQrCodeBase64(),
+                    "dias_anteriores", admin.getEmpresa().getDiasRestantes()
+            ));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Erro ao gerar Pix");
+        }
+    }
+
+    @PostMapping("/empresa/atualizar-cnpj")
+    public String atualizarCnpj(@RequestParam("cnpj") String cnpj, RedirectAttributes ra) {
+        Usuario admin = getUsuarioLogado();
+        if (admin != null && admin.getEmpresa() != null) {
+            Empresa emp = admin.getEmpresa();
+            emp.setCnpj(cnpj.replaceAll("\\D", ""));
+            empresaRepo.save(emp);
+            ra.addFlashAttribute("mensagem", "CNPJ da empresa atualizado com sucesso!");
+        }
+        return "redirect:/admin/funcionarios";
+    }
+
     @PostMapping("/funcionarios/configurar/{id}")
     public String configurarFuncionario(@PathVariable Long id,
                                         @RequestParam("tipoFuncionario") String tipoFuncionario,
@@ -147,7 +218,6 @@ public class AdminController {
                                         RedirectAttributes ra) {
         Usuario admin = getUsuarioLogado();
         usuarioRepo.findById(id).ifPresent(u -> {
-            // SEGURANÇA: Verifica se o funcionário pertence à empresa do admin
             if (u.getEmpresa().getId().equals(admin.getEmpresa().getId())) {
                 u.setTipoFuncionario(tipoFuncionario);
                 u.setComissaoOs(comissaoOs);

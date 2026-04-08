@@ -8,6 +8,21 @@
 ## 📖 Sobre o Projeto
 Este é um ecossistema completo para gestão empresarial, desenvolvido originalmente para a **Shark Eletrônicos**. O sistema resolve problemas reais de faturamento, controle de estoque e fluxo de ordens de serviço, unindo a robustez do ecossistema Java com uma interface responsiva.
 
+## 🏗️ Diferenciais de Engenharia
+
+### 🔐 Arquitetura Multi-Tenant & Segurança
+Diferente de sistemas simples, este projeto foi projetado para escala:
+* **Isolamento de Dados:** Implementação de filtros globais por `empresa_id`, garantindo que um cliente nunca acesse dados de outra loja.
+* **Spring Security (RBAC):** Controle de acesso baseado em funções (Admin e Funcionário).
+* **Fila de Aprovação:** Workflow de segurança onde novos cadastros de funcionários aguardam aprovação manual para ativação de login.
+
+### 🚀 Infraestrutura & DevOps
+O sistema não roda apenas no "localhost". Ele possui um pipeline de deploy real:
+* **Cloud Hosting:** Hospedado em instância Linux (Ubuntu) na nuvem.
+* **Proxy Reverso:** Utilização de **Nginx** para gerenciamento de requisições e segurança.
+* **Segurança de Borda:** Implementação de **Cloudflare** para gestão de DNS, SSL/TLS e aceleração de conteúdo via CDN.
+* **Automação:** Scripts de deploy em **Bash** para integração e reinicialização contínua do serviço.
+  
 ## 🏗️ Arquitetura do Sistema (Backend)
 
 O projeto segue os padrões da arquitetura **MVC** e **Clean Code**, organizado nos seguintes pacotes:
@@ -39,6 +54,7 @@ Desenvolvido com **Thymeleaf** e **Bootstrap**, o sistema conta com as seguintes
 * 📈 **Relatórios**: Geração de dados para tomada de decisão financeira.
 * 🔐 **Login/Layout**: Sistema de acesso restrito e estrutura visual padronizada.
 
+
 ## 🛠️ Tecnologias Utilizadas
 * **Back-end:** Java 17, Spring Boot 3, Spring Security, Spring Data JPA.
 * **Banco de Dados:** MySQL (Relacional).
@@ -50,10 +66,7 @@ Desenvolvido com **Thymeleaf** e **Bootstrap**, o sistema conta com as seguintes
 2.  Execute `mvn clean install`.
 3.  Inicie com `mvn spring-boot:run`.
 4.  Acesse `localhost:8080`.
-5.  crie seu login.
-6.  Ativação Manual: Como o sistema inicia com usuários bloqueados, acesse seu terminal MySQL ou Workbench e rode:
-UPDATE usuarios SET aprovado = 1, role = 'ROLE_ADMIN' WHERE username = 'NomeDoUsuario';
-7.  - Login: Agora você pode acessar o sistema com todas as funções liberadas.
+5.  crie sua empresa.
 
 ---
 ## 👨‍💻 Luiz Eduardo Mendonça Amorim

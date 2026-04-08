@@ -12,10 +12,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private AssinaturaInterceptor assinaturaInterceptor;
 
-    /**
-     * Resolve o erro 404 da raiz (/).
-     * Sempre que alguém acessar http://localhost:8080/, será mandado para o /dashboard.
-     */
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addRedirectViewController("/", "/dashboard");

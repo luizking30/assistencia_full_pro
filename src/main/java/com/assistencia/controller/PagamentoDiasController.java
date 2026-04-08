@@ -30,10 +30,6 @@ public class PagamentoDiasController {
         this.empresaRepository = empresaRepository;
     }
 
-    /**
-     * Endpoint para o JavaScript verificar se o saldo de dias aumentou.
-     * O JavaScript deve enviar o parâmetro 'diasAnteriores' que a empresa tinha antes de gerar o Pix.
-     */
     @GetMapping("/status-check")
     @ResponseBody
     public ResponseEntity<Boolean> verificarStatus(Authentication auth, @RequestParam("diasAnteriores") Integer diasAnteriores) {

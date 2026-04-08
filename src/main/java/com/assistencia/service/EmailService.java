@@ -22,7 +22,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "utf-8");
 
             // O link que o usuário clicará (ajuste o IP/Domínio quando subir para produção)
-            String linkRecuperacao = "http://localhost:8080/resetar-senha?token=" + token;
+            String linkRecuperacao = "https://sharkgestao.com/resetar-senha?token=" + token;
 
             String conteudoHtml =
                     "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden;'>" +

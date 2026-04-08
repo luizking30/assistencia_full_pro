@@ -24,10 +24,6 @@ public class PagamentoWebhookController {
     @Value("${mercado_pago_sample_access_token}")
     private String mpAccessToken;
 
-    /**
-     * URL configurada no painel do Mercado Pago:
-     * https://gestaoshark.up.railway.app/api/webhook/pagamento
-     */
     @PostMapping("/pagamento")
     public ResponseEntity<Void> receberNotificacao(
             @RequestParam(value = "data.id", required = false) Long dataId,

@@ -146,7 +146,6 @@ public class DiasPagoController {
             return "redirect:/pagamento";
         }
     }
-
     private String limparCpf(String cpf) {
         if (cpf == null) return null;
         return cpf.replaceAll("[^0-9]", "");

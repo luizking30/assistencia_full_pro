@@ -106,10 +106,11 @@ public class AuthController {
             usuario.setEmpresa(emp);
 
             usuarioRepository.save(usuario);
-            attributes.addFlashAttribute("mensagemSucesso", "Conta de funcionário criada com sucesso! Agora você precisa ser aprovado pelo proprietário da empresa.");
+            attributes.addFlashAttribute("mensagemSucesso", "Conta de funcionário criada com sucesso! Agora você precisa ser aprovado.");
 
         } catch (Exception e) {
-            model.addAttribute("mensagemErro", "Erro ao processar solicitação.");
+            e.printStackTrace();
+            model.addAttribute("mensagemErro", "Erro ao processar solicitação: " + e.getMessage());
             model.addAttribute("empresas", empresaRepository.findByAtivoTrue());
             return "criarfuncionario";
         }
@@ -131,7 +132,8 @@ public class AuthController {
                 emailService.enviarEmailRecuperacao(user.getEmail(), token);
                 attributes.addFlashAttribute("sucessoRecuperacao", "E-mail enviado para " + user.getEmail());
             } catch (Exception e) {
-                attributes.addFlashAttribute("mensagemErro", "Erro ao enviar e-mail.");
+                e.printStackTrace();
+                attributes.addFlashAttribute("mensagemErro", "Erro ao disparar e-mail: " + e.getMessage());
             }
         } else {
             attributes.addFlashAttribute("mensagemErro", "Usuário não encontrado!");
@@ -184,7 +186,6 @@ public class AuthController {
             result.rejectValue("empresa.nome", "error.usuario", "Informação obrigatória");
         }
 
-        // Validação básica de CNPJ duplicado (opcional, mas recomendado)
         if (cnpj != null && !cnpj.isBlank()) {
             String cnpjLimpo = cnpj.replaceAll("\\D", "");
             if (empresaRepository.findByCnpj(cnpjLimpo).isPresent()) {
@@ -234,10 +235,11 @@ public class AuthController {
             usuario.setEmpresa(empresaSalva);
 
             usuarioRepository.save(usuario);
-            attributes.addFlashAttribute("mensagemSucesso", "Empresa criada com sucesso! Você ganhou (7) dias de acesso grátis!");
+            attributes.addFlashAttribute("mensagemSucesso", "Empresa criada com sucesso!");
 
         } catch (Exception e) {
-            model.addAttribute("mensagemErro", "Erro interno ao criar empresa.");
+            e.printStackTrace();
+            model.addAttribute("mensagemErro", "Erro interno: " + e.getMessage());
             model.addAttribute("nomeEmpresaDigitado", nomeEmpresa);
             return "criarempresa";
         }

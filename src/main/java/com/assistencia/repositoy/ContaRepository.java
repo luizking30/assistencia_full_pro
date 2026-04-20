@@ -18,14 +18,14 @@ public interface ContaRepository extends JpaRepository<Conta, Long> {
     List<Conta> findByDataVencimentoBetween(LocalDate inicio, LocalDate fim);
 
     // 3. Busca apenas o que já foi PAGO (Para o Histórico debaixo)
-    List<Conta> findByPagoTrueOrderByDataVencimentoDesc();
+    List<Conta> findByPagaTrueOrderByDataVencimentoDesc();
 
     // --- QUERIES DE SOMA (Opcionais, pois estamos somando via Stream no Controller) ---
 
-    @Query("SELECT SUM(c.valor) FROM Conta c WHERE c.pago = true")
+    @Query("SELECT SUM(c.valor) FROM Conta c WHERE c.paga = true")
     Double somarTotalPagoGeral();
 
     // Soma apenas o que não está pago dentro de um período específico
-    @Query("SELECT SUM(c.valor) FROM Conta c WHERE c.pago = false AND c.dataVencimento BETWEEN :inicio AND :fim")
+    @Query("SELECT SUM(c.valor) FROM Conta c WHERE c.paga = false AND c.dataVencimento BETWEEN :inicio AND :fim")
     Double somarPendenteDoMes(LocalDate inicio, LocalDate fim);
 }

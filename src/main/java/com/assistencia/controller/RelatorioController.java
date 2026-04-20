@@ -2,8 +2,10 @@ package com.assistencia.controller;
 
 import com.assistencia.model.Venda;
 import com.assistencia.model.OrdemServico;
+import com.assistencia.model.Conta;
 import com.assistencia.repository.VendaRepository;
 import com.assistencia.repository.OrdemServicoRepository;
+import com.assistencia.repository.ContaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
@@ -14,8 +16,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 @Controller
 public class RelatorioController {
@@ -26,20 +30,33 @@ public class RelatorioController {
     @Autowired
     private OrdemServicoRepository osRepository;
 
+    @Autowired
+    private ContaRepository contaRepository;
+
     @GetMapping("/relatorios")
     public String gerarRelatorioCompleto(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
+            @RequestParam(required = false) String mesFiltro,
             Model model) {
 
         List<Venda> vendas = new ArrayList<>();
         List<OrdemServico> servicos = new ArrayList<>();
+        List<Conta> contasPagas = new ArrayList<>();
 
-        // Inicializamos os totais com 0.0 para evitar erros de exibição no HTML
         double totalVendasBruto = 0.0;
         double custoEstoqueVendido = 0.0;
         double totalServicosBruto = 0.0;
         double custoPecasOS = 0.0;
+        double totalDespesas = 0.0;
+
+        // 🚀 LÓGICA DE MÊS: Se o usuário filtrou por mês, convertemos para início e fim do mês
+        if (mesFiltro != null && !mesFiltro.isEmpty()) {
+            YearMonth ym = YearMonth.parse(mesFiltro);
+            inicio = ym.atDay(1);
+            fim = ym.atEndOfMonth();
+            model.addAttribute("mesFiltro", mesFiltro);
+        }
 
         if (inicio != null && fim != null) {
             LocalDateTime dataInicial = inicio.atStartOfDay();
@@ -62,14 +79,26 @@ public class RelatorioController {
 
             custoPecasOS = servicos.stream()
                     .mapToDouble(s -> s.getCustoPeca() != null ? s.getCustoPeca() : 0.0).sum();
+
+            // 4. Busca e Cálculo de Despesas (Contas Pagas no período)
+            LocalDate dataIniContas = inicio;
+            LocalDate dataFimContas = fim;
+            contasPagas = contaRepository.findAll().stream()
+                    .filter(c -> c.isPaga() && c.getDataPagamento() != null &&
+                            !c.getDataPagamento().toLocalDate().isBefore(dataIniContas) &&
+                            !c.getDataPagamento().toLocalDate().isAfter(dataFimContas))
+                    .collect(Collectors.toList());
+
+            totalDespesas = contasPagas.stream().mapToDouble(Conta::getValor).sum();
         }
 
-        // 4. Totais Gerais e Lucros (Calculados fora do IF para evitar erros no Model)
+        // 5. Totais Gerais e Lucros
         double lucroVendas = totalVendasBruto - custoEstoqueVendido;
         double lucroServicos = totalServicosBruto - custoPecasOS;
         double lucroTotalPeriodo = lucroVendas + lucroServicos;
+        double lucroTotalFinal = lucroTotalPeriodo - totalDespesas; // Lucro Real (Vendas + OS - Contas)
 
-        // Atributos para os Cards do Thymeleaf
+        // Atributos para o Thymeleaf
         model.addAttribute("totalVendasBruto", totalVendasBruto);
         model.addAttribute("custoEstoqueVendido", custoEstoqueVendido);
         model.addAttribute("lucroVendas", lucroVendas);
@@ -78,10 +107,10 @@ public class RelatorioController {
         model.addAttribute("custoPecasOS", custoPecasOS);
         model.addAttribute("lucroServicos", lucroServicos);
 
-        // Atributo principal do Resultado Total (Linha 163 do seu HTML)
-        model.addAttribute("lucroTotalPeriodo", lucroTotalPeriodo);
+        model.addAttribute("totalDespesas", totalDespesas);
+        model.addAttribute("lucroTotalPeriodo", lucroTotalPeriodo); // Vendas + Serviços
+        model.addAttribute("lucroTotalFinal", lucroTotalFinal);     // Vendas + Serviços - Contas
 
-        // Listas e Datas para a tabela e o formulário
         model.addAttribute("vendas", vendas);
         model.addAttribute("servicos", servicos);
         model.addAttribute("inicio", inicio);

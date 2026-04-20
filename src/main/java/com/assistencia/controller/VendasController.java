@@ -28,6 +28,8 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/vendas")
@@ -44,21 +46,21 @@ public class VendasController {
     }
 
     /**
-     * Exibe a tela de PDV (Vendas) com o histórico do dia atual.
+     * Exibe a tela de PDV (Vendas) com TODO o histórico do período.
+     * Alterado de findByDataHoraBetween para findAll() para mostrar tudo.
      */
     @GetMapping
     public String novaVenda(Model model) {
-        LocalDateTime inicioDia = LocalDate.now().atStartOfDay();
-        LocalDateTime fimDia = LocalDate.now().atTime(LocalTime.MAX);
-        List<Venda> vendasHoje = vendaRepo.findByDataHoraBetween(inicioDia, fimDia);
+        // 🚀 MUDANÇA AQUI: Agora busca todas as vendas do banco, não só as de hoje.
+        List<Venda> todasVendas = vendaRepo.findAll();
 
-        Double totalVendasHoje = vendasHoje.stream()
+        Double totalAcumulado = todasVendas.stream()
                 .filter(v -> v.getValorTotal() != null)
                 .mapToDouble(Venda::getValorTotal)
                 .sum();
 
-        model.addAttribute("vendas", vendasHoje);
-        model.addAttribute("totalVendasHoje", totalVendasHoje);
+        model.addAttribute("vendas", todasVendas);
+        model.addAttribute("totalVendasHoje", totalAcumulado);
 
         if (!model.containsAttribute("venda")) {
             Venda novaVenda = new Venda();
@@ -69,7 +71,8 @@ public class VendasController {
     }
 
     /**
-     * Endpoint para busca dinâmica (Ajax) utilizada no Frontend.
+     * Endpoint para busca dinâmica (Ajax).
+     * Ajustado para retornar tudo caso os filtros estejam vazios.
      */
     @GetMapping("/filtrar")
     @ResponseBody
@@ -79,9 +82,7 @@ public class VendasController {
             @RequestParam(required = false) Long id) {
 
         if ((vendedor == null || vendedor.isEmpty()) && (data == null || data.isEmpty()) && id == null) {
-            LocalDateTime inicio = LocalDate.now().atStartOfDay();
-            LocalDateTime fim = LocalDate.now().atTime(LocalTime.MAX);
-            return vendaRepo.findByDataHoraBetween(inicio, fim);
+            return vendaRepo.findAll();
         }
 
         if (id != null) {
@@ -90,7 +91,7 @@ public class VendasController {
 
         LocalDateTime dataInicio = (data != null && !data.isEmpty())
                 ? LocalDate.parse(data).atStartOfDay()
-                : LocalDate.now().minusYears(1).atStartOfDay();
+                : LocalDate.now().minusYears(10).atStartOfDay();
 
         LocalDateTime dataFim = (data != null && !data.isEmpty())
                 ? LocalDate.parse(data).atTime(LocalTime.MAX)
@@ -158,7 +159,7 @@ public class VendasController {
 
             vendaRepo.save(venda);
 
-            // Atualização do saldo transiente para exibição imediata
+            // Atualização imediata do saldo para compatibilidade com lógica de data de corte
             if (valorComissaoCalculada > 0) {
                 double saldoAnterior = (vendedorObj.getSaldoVendaCalculado() != null) ? vendedorObj.getSaldoVendaCalculado() : 0.0;
                 vendedorObj.setSaldoVendaCalculado(saldoAnterior + valorComissaoCalculada);
@@ -223,7 +224,6 @@ public class VendasController {
             Venda v = vendaRepo.findById(id).orElseThrow(() -> new RuntimeException("Venda não encontrada"));
             Usuario vendedorObj = v.getVendedor();
 
-            // Estorno de comissão usando o campo transiente correto
             if (vendedorObj != null && v.getComissaoVendedorValor() != null && v.getComissaoVendedorValor() > 0) {
                 double valorEstorno = v.getComissaoVendedorValor();
                 double saldoAtual = (vendedorObj.getSaldoVendaCalculado() != null) ? vendedorObj.getSaldoVendaCalculado() : 0.0;
